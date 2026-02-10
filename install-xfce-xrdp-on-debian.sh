@@ -229,7 +229,7 @@ $SUDO install -o "$TARGET_USER" -g "$TARGET_USER" -m 0644 \
   /tmp/restart-openclaw.desktop "$AUTOSTART/restart-openclaw-gateway.desktop"
 rm -f /tmp/restart-openclaw.desktop
 
-sudo systemctl disable --now lightdm
+$SUDO systemctl disable --now lightdm
 
 # -------------------------
 # Finish: hand back to user

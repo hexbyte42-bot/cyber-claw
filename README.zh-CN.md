@@ -24,9 +24,9 @@ curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-
 
 `install-xfce-xrdp-on-debian.sh` 会执行以下操作：
 
-1. 更新 apt，并安装 XFCE、XRDP、Xorg XRDP 以及字体（包括 Noto CJK/Emoji）。
+1. 更新 apt，并安装 XFCE、XRDP、Xorg XRDP、一些辅助工具（如 `xclip`）以及字体（包括 Noto CJK/Emoji）。
 2. 安装并配置 `fcitx5`，启用中文拼音输入（默认保留英文）。
-3. 安装 Papirus 图标主题、XFCE appmenu 插件和 LibreOffice。
+3. 安装 Papirus 图标主题、XFCE appmenu 插件、LibreOffice 和 Chromium。
 4. 在运行中的 XRDP 会话内将 Papirus 设为默认图标主题。
 5. 从 zquestz 的 Debian 仓库安装 `plank-reloaded`，并启用开机自启动。
 6. 配置 XFCE 面板：
@@ -66,7 +66,8 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 
 - 脚本会尝试与一个正在运行的 XRDP 会话交互，以可靠应用 XFCE 设置。若不存在 XRDP 会话，它会尝试创建一个。
 - XFCE 面板设置会通过 XRDP 会话内的 `xfconf-query` 写入。
-- 脚本默认禁用 `lightdm`；如果你需要本地 GUI 登录，请手动重新启用。
+- 脚本默认禁用 `lightdm`（无头/远程工作流）；如果你需要本地 GUI 登录，请手动重新启用。
+- 脚本只会在交互式终端里询问是否重启；如果是非交互方式运行（例如 `curl | bash`），会跳过询问并提示你手动重启。
 
 ## 故障排查
 

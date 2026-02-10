@@ -24,9 +24,9 @@ After that, you can use ***Windows Remote Desktop*** or ***Windows App for Mac**
 
 `install-xfce-xrdp-on-debian.sh` performs the following:
 
-1. Updates apt and installs XFCE, XRDP, Xorg XRDP, and fonts (including Noto CJK/Emoji).
+1. Updates apt and installs XFCE, XRDP, Xorg XRDP, helper tools (e.g. `xclip`), and fonts (including Noto CJK/Emoji).
 2. Installs and configures `fcitx5` with Chinese pinyin input (keeps English as default).
-3. Installs Papirus icon theme, XFCE appmenu plugin, and LibreOffice.
+3. Installs Papirus icon theme, XFCE appmenu plugin, LibreOffice, and Chromium.
 4. Sets Papirus as the default icon theme inside the live XRDP session.
 5. Installs `plank-reloaded` from the zquestz Debian repo and enables auto-start.
 6. Configures the XFCE panel:
@@ -66,7 +66,8 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 
 - The script tries to interact with a live XRDP session to apply XFCE settings reliably. If no XRDP session exists, it will attempt to create one.
 - XFCE panel settings are written via `xfconf-query` in the XRDP session.
-- The script disables `lightdm` by default; if you want a local GUI login, re-enable it manually.
+- The script disables `lightdm` by default (headless/remote workflow); if you want a local GUI login, re-enable it manually.
+- The script only prompts for reboot in an interactive shell; when run non-interactively (e.g. via `curl | bash`) it will skip the prompt and tell you to reboot manually.
 
 ## Troubleshooting
 
