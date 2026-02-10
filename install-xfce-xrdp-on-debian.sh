@@ -196,7 +196,7 @@ set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/bold-application-name tr
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode          false
 
 # reload (non-blocking)
-xfce4-panel -r
+xfce4-panel -r &
 '
 
 # -------------------------
