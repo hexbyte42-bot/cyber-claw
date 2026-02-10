@@ -40,8 +40,15 @@ run_in_xrdp_session() {
   $SUDO -u "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
 }
 reload_xfce_panel_real_session() {
-  local disp="$1"
+  local disp="${1:-}"
   local pid bus
+
+  if [[ -z "$disp" ]]; then
+    disp="$(ensure_xrdp_display)" || {
+      warn "Cannot determine DISPLAY for panel reload; skipping."
+      return 0
+    }
+  fi
 
   # 找到该用户的 xfce4-panel 进程
   pid="$(pgrep -u "$TARGET_USER" -x xfce4-panel | head -n1 || true)"
@@ -239,7 +246,7 @@ set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode          fa
 '
 
 # reload (non-blocking)
-reload_xfce_panel_real_session
+reload_xfce_panel_real_session "$(ensure_xrdp_display)"
 
 # -------------------------
 # openclaw-gateway + xrdp session binding
