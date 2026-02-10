@@ -194,9 +194,6 @@ set_string xfce4-panel /plugins/plugin-2 appmenu
 # 3) appmenu settings
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/bold-application-name true
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode          false
-
-# reload (non-blocking)
-xfce4-panel -r &
 '
 
 # -------------------------
@@ -245,3 +242,19 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 ============================================================
 
 EOF
+
+if [[ -t 0 ]]; then
+  read -r -p "Reboot now to apply all changes? [y/N]: " reboot_ans
+  case "${reboot_ans,,}" in
+    y|yes)
+      log "Rebooting system now..."
+      $SUDO reboot
+      ;;
+    *)
+      warn "Reboot skipped. Please reboot manually when convenient."
+      ;;
+  esac
+else
+  warn "Non-interactive shell detected; skipping reboot prompt."
+  warn "Please reboot manually to apply all changes."
+fi
