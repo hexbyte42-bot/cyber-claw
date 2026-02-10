@@ -1,10 +1,14 @@
 # Debian XFCE + XRDP Setup for OpenClaw
 
+[中文 README](./README.zh-CN.md)
+
 ## One-Line Install (curl)
 
 You must run it on a clean installed debian 13 (trixie) cloud image.
 
 Checkout "cloud image" at <https://www.debian.org/distrib/>, and choose the right one for you.
+
+Or you can manually install from ISO and **don't select any desktop environment**.
 
 SSH to your newly installed VM, and run:
 
@@ -13,6 +17,8 @@ curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-
 ```
 
 This repository contains a single script that prepares a Debian machine with XFCE and XRDP, configures Chinese input (fcitx5 + pinyin), polishes the desktop, and wires OpenClaw session behavior so the final OpenClaw install can run smoothly.
+
+After that, you can use ***Windows Remote Desktop*** or ***Windows App for Mac*** to connect your VM with IP address.
 
 ## What the Script Does
 

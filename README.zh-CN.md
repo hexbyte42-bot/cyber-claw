@@ -1,0 +1,82 @@
+# OpenClaw 的 Debian XFCE + XRDP 配置指南
+
+[English README](./README.md)
+
+## 一行安装（curl）
+
+你必须在一台全新安装的 Debian 13（trixie）云镜像上运行本脚本。
+
+请在 <https://www.debian.org/distrib/> 查看“云镜像”，并选择适合你的镜像。
+
+或者你也可以从 ISO 手动安装，但请**不要选择任何桌面环境**。
+
+通过 SSH 登录到新安装的虚拟机后，执行：
+
+```bash
+curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | bash
+```
+
+本仓库包含一个脚本，用于把 Debian 机器配置为 XFCE + XRDP，配置中文输入（fcitx5 + 拼音），优化桌面体验，并接好 OpenClaw 会话行为，以便后续 OpenClaw 安装能够顺利进行。
+
+完成后，你可以使用 ***Windows 远程桌面*** 或 ***Windows App for Mac***，通过 IP 地址连接到你的虚拟机。
+
+## 脚本会做什么
+
+`install-xfce-xrdp-on-debian.sh` 会执行以下操作：
+
+1. 更新 apt，并安装 XFCE、XRDP、Xorg XRDP 以及字体（包括 Noto CJK/Emoji）。
+2. 安装并配置 `fcitx5`，启用中文拼音输入（默认保留英文）。
+3. 安装 Papirus 图标主题、XFCE appmenu 插件和 LibreOffice。
+4. 在运行中的 XRDP 会话内将 Papirus 设为默认图标主题。
+5. 从 zquestz 的 Debian 仓库安装 `plank-reloaded`，并启用开机自启动。
+6. 配置 XFCE 面板：
+   - 删除 `panel-2`
+   - 强制 `plugin-2` 使用 appmenu 插件
+   - 应用 appmenu 设置
+7. 配置 OpenClaw 网关集成：
+   - 添加 systemd 用户级 override，确保存在 XRDP 会话
+   - 配置 XFCE 自动启动，在登录后重启网关
+8. 禁用 `lightdm`（无头/远程工作流）。
+
+脚本结束时会打印安装 OpenClaw 的手动步骤。
+
+## 运行要求
+
+- 基于 Debian 且使用 `apt` 的系统
+- 使用 `sudo` 运行（或直接使用 `root`）
+- 需要网络访问以安装软件包并拉取 Plank 仓库密钥
+
+## 用法
+
+```bash
+sudo bash install-xfce-xrdp-on-debian.sh
+```
+
+该脚本设计为在全新或干净的 Debian 实例上运行一次。它会尝试识别目标用户（调用 `sudo` 的用户），并为该用户的主目录写入 XFCE 设置、autostart 条目和 systemd 用户级 override。
+
+## 最后手动步骤（安装 OpenClaw）
+
+脚本执行完成后，请手动安装 OpenClaw：
+
+```bash
+curl -fsSL https://openclaw.ai/install.sh | bash
+```
+
+## 说明
+
+- 脚本会尝试与一个正在运行的 XRDP 会话交互，以可靠应用 XFCE 设置。若不存在 XRDP 会话，它会尝试创建一个。
+- 如果无法检测到 `xfce4-panel` 或 DBus 会话信息，脚本会回退到“尽力而为”的重启方式。
+- 脚本默认禁用 `lightdm`；如果你需要本地 GUI 登录，请手动重新启用。
+
+## 故障排查
+
+- 如果 XRDP 启动失败，请检查：
+  - `systemctl status xrdp`
+  - `journalctl -u xrdp -e`
+- 如果 XFCE 设置没有生效，请先通过 XRDP 登录一次，然后重新运行脚本。
+- 如果 `plank` 没有自动启动，请检查以下路径中的 autostart 文件：
+  - `~/.config/autostart/plank-reloaded.desktop`
+
+## 文件
+
+- `install-xfce-xrdp-on-debian.sh`：主安装脚本

@@ -39,6 +39,48 @@ run_in_xrdp_session() {
   # dbus-run-session gives a private session bus so xfconf doesn't need autolaunch
   $SUDO -u "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
 }
+reload_xfce_panel_real_session() {
+  local disp="$1"
+  local pid bus
+
+  # 找到该用户的 xfce4-panel 进程
+  pid="$(pgrep -u "$TARGET_USER" -x xfce4-panel | head -n1 || true)"
+
+  # 如果没找到 panel，就尝试从 xfce4-session 找 bus
+  if [[ -z "${pid:-}" ]]; then
+    pid="$(pgrep -u "$TARGET_USER" -x xfce4-session | head -n1 || true)"
+  fi
+
+  if [[ -z "${pid:-}" ]]; then
+    warn "No xfce4-panel/xfce4-session process found; cannot grab real DBUS_SESSION_BUS_ADDRESS."
+    warn "Will try a best-effort restart with DISPLAY only."
+    $SUDO -u "$TARGET_USER" env DISPLAY="$disp" nohup xfce4-panel >/dev/null 2>&1 &
+    return 0
+  fi
+
+  bus="$($SUDO -u "$TARGET_USER" tr '\0' '\n' < "/proc/$pid/environ" \
+        | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1 || true)"
+
+  if [[ -z "${bus:-}" ]]; then
+    warn "Could not read DBUS_SESSION_BUS_ADDRESS from /proc/$pid/environ; fallback to DISPLAY-only restart."
+    $SUDO -u "$TARGET_USER" env DISPLAY="$disp" nohup xfce4-panel >/dev/null 2>&1 &
+    return 0
+  fi
+
+  log "Reload panel using real session bus (pid=$pid)"
+  # 先尝试 non-blocking restart；不行就 kill + 后台拉起
+  if command -v timeout >/dev/null 2>&1; then
+    if timeout 3s $SUDO -u "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" xfce4-panel --restart >/dev/null 2>&1; then
+      return 0
+    fi
+  else
+    $SUDO -u "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" xfce4-panel --restart >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  $SUDO -u "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" pkill -x xfce4-panel >/dev/null 2>&1 || true
+  $SUDO -u "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" nohup xfce4-panel >/dev/null 2>&1 &
+}
 
 # 目标用户（写 ~/.config 的那个）
 TARGET_USER="${SUDO_USER:-$(id -un)}"
@@ -194,13 +236,10 @@ set_string xfce4-panel /plugins/plugin-2 appmenu
 # 3) appmenu settings
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/bold-application-name true
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode          false
+'
 
 # reload (non-blocking)
-if timeout 3s xfce4-panel --restart >/dev/null 2>&1; then :; else
-  pkill -u "$USER" -x xfce4-panel >/dev/null 2>&1 || true
-  nohup xfce4-panel >/dev/null 2>&1 &
-fi
-'
+reload_xfce_panel_real_session
 
 # -------------------------
 # openclaw-gateway + xrdp session binding
