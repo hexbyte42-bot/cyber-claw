@@ -39,48 +39,6 @@ run_in_xrdp_session() {
   # dbus-run-session gives a private session bus so xfconf doesn't need autolaunch
   $SUDO -u "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
 }
-reload_xfce_panel_real_session() {
-  local disp="$1"
-  local pid bus
-
-  # 找到该用户的 xfce4-panel 进程
-  pid="$(pgrep -u "$TARGET_USER" -x xfce4-panel | head -n1 || true)"
-
-  # 如果没找到 panel，就尝试从 xfce4-session 找 bus
-  if [[ -z "${pid:-}" ]]; then
-    pid="$(pgrep -u "$TARGET_USER" -x xfce4-session | head -n1 || true)"
-  fi
-
-  if [[ -z "${pid:-}" ]]; then
-    warn "No xfce4-panel/xfce4-session process found; cannot grab real DBUS_SESSION_BUS_ADDRESS."
-    warn "Will try a best-effort restart with DISPLAY only."
-    $SUDO -u "$TARGET_USER" env DISPLAY="$disp" nohup xfce4-panel >/dev/null 2>&1 &
-    return 0
-  fi
-
-  bus="$($SUDO -u "$TARGET_USER" tr '\0' '\n' < "/proc/$pid/environ" \
-        | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1 || true)"
-
-  if [[ -z "${bus:-}" ]]; then
-    warn "Could not read DBUS_SESSION_BUS_ADDRESS from /proc/$pid/environ; fallback to DISPLAY-only restart."
-    $SUDO -u "$TARGET_USER" env DISPLAY="$disp" nohup xfce4-panel >/dev/null 2>&1 &
-    return 0
-  fi
-
-  log "Reload panel using real session bus (pid=$pid)"
-  # 先尝试 non-blocking restart；不行就 kill + 后台拉起
-  if command -v timeout >/dev/null 2>&1; then
-    if timeout 3s $SUDO -u "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" xfce4-panel --restart >/dev/null 2>&1; then
-      return 0
-    fi
-  else
-    $SUDO -u "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" xfce4-panel --restart >/dev/null 2>&1 || true
-    return 0
-  fi
-
-  $SUDO -u "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" pkill -x xfce4-panel >/dev/null 2>&1 || true
-  $SUDO -u "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" nohup xfce4-panel >/dev/null 2>&1 &
-}
 
 # 目标用户（写 ~/.config 的那个）
 TARGET_USER="${SUDO_USER:-$(id -un)}"
@@ -162,13 +120,18 @@ fcitx5 -rd 2>/dev/null || true
 # -------------------------
 # Desktop polish
 # -------------------------
-log "Install Papirus icon theme / global menu / LibreOffice"
-$SUDO apt install -y papirus-icon-theme xfce4-appmenu-plugin libreoffice libreoffice-gtk3
+log "Install Papirus icon theme / global menu / LibreOffice / Chromium"
+$SUDO apt install -y papirus-icon-theme xfce4-appmenu-plugin libreoffice libreoffice-gtk3 chromium
 
 # 👉【新增】设置 Papirus 为默认图标主题（XFCE）
 log "Set default icon theme to Papirus (ensure XRDP session + DISPLAY + D-Bus)"
 
-run_in_xrdp_session xfconf-query -c xsettings -p /Net/IconThemeName -s Papirus
+DISPLAY_NUM="$(ensure_xrdp_display)"
+log "Using DISPLAY=$DISPLAY_NUM"
+
+# dbus-run-session 比 dbus-launch 更稳：直接给这一条命令一个临时 session bus
+$SUDO -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" dbus-run-session -- \
+  xfconf-query -c xsettings -p /Net/IconThemeName -s Papirus
 
 # -------------------------
 # plank-reloaded
@@ -199,26 +162,19 @@ $SUDO install -o "$TARGET_USER" -g "$TARGET_USER" -m 0644 \
   /tmp/plank.desktop "$AUTOSTART/plank-reloaded.desktop"
 rm -f /tmp/plank.desktop
 
-# -------------------------
-# Configure XFCE panel
-# -------------------------
-
 log "Configure XFCE panel (remove panel-2, set appmenu as plugin-2, apply settings)"
 
 run_in_xrdp_session bash -lc '
 set -euo pipefail
-
 command -v xfconf-query >/dev/null
 command -v xfce4-panel  >/dev/null
-command -v timeout >/dev/null || { echo "timeout is required (coreutils)."; exit 1; }
+command -v timeout >/dev/null
 
 set_int_array() {
   local channel="$1"; shift
   local prop="$1"; shift
   local -a vals=("$@")
-
   local -a args=(--create -c "$channel" -p "$prop")
-  local v
   for v in "${vals[@]}"; do
     args+=(-t int -s "$v")
   done
@@ -226,44 +182,25 @@ set_int_array() {
   xfconf-query "${args[@]}"
 }
 
-set_string() { xfconf-query --create -c "$1" -p "$2" -t string -s "$3"; }
-set_bool()   { xfconf-query --create -c "$1" -p "$2" -t bool   -s "$3"; }
+set_string(){ xfconf-query --create -c "$1" -p "$2" -t string -s "$3"; }
+set_bool(){   xfconf-query --create -c "$1" -p "$2" -t bool   -s "$3"; }
 
-# ---------- 1) Remove panel-2 ----------
-PANELS_RAW="$(xfconf-query -c xfce4-panel -p /panels 2>/dev/null || true)"
-mapfile -t PANELS_ARR < <(echo "$PANELS_RAW" | tr -cd "0-9 \n" | tr " " "\n" | awk "NF && \$1!=2")
-if (( ${#PANELS_ARR[@]} == 0 )); then PANELS_ARR=(1); fi
-set_int_array xfce4-panel /panels "${PANELS_ARR[@]}"
+# 1) delete panel-2 by keeping only panel-1
+set_int_array xfce4-panel /panels 1
 
-# ---------- 2) Force plugin-2 to be appmenu ----------
-set_string xfce4-panel /plugins/plugin-2/type appmenu
+# 2) force plugin-2 to be appmenu (NOTE: your system stores type at /plugins/plugin-2)
+set_string xfce4-panel /plugins/plugin-2 appmenu
 
-IDS_RAW="$(xfconf-query -c xfce4-panel -p /panels/panel-1/plugin-ids 2>/dev/null || true)"
-mapfile -t IDS_ARR < <(echo "$IDS_RAW" | tr -cd "0-9 \n" | tr " " "\n" | awk "NF")
-mapfile -t IDS_NO2 < <(printf "%s\n" "${IDS_ARR[@]}" | awk "\$1!=2")
-
-if (( ${#IDS_NO2[@]} == 0 )); then
-  NEW_IDS=(2)
-elif (( ${#IDS_NO2[@]} == 1 )); then
-  NEW_IDS=("${IDS_NO2[0]}" 2)
-else
-  NEW_IDS=("${IDS_NO2[0]}" 2 "${IDS_NO2[@]:1}")
-fi
-
-set_int_array xfce4-panel /panels/panel-1/plugin-ids "${NEW_IDS[@]}"
-
-# ---------- 3) appmenu plugin-2 settings ----------
+# 3) appmenu settings
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/bold-application-name true
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode          false
+
+# reload (non-blocking)
+if timeout 3s xfce4-panel --restart >/dev/null 2>&1; then :; else
+  pkill -u "$USER" -x xfce4-panel >/dev/null 2>&1 || true
+  nohup xfce4-panel >/dev/null 2>&1 &
+fi
 '
-
-# ---------- Reload panel (non-blocking + timeout) ----------
-echo "Reloading xfce4-panel (non-blocking)..."
-
-DISPLAY_NUM="$(ensure_xrdp_display)"
-reload_xfce_panel_real_session "$DISPLAY_NUM"
-
-echo "Done: removed panel-2, forced appmenu on plugin-2, applied settings."
 
 # -------------------------
 # openclaw-gateway + xrdp session binding
