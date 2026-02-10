@@ -8,7 +8,7 @@
 
 请在 <https://www.debian.org/distrib/> 查看“云镜像”，并选择适合你的镜像。
 
-或者你也可以从 ISO 手动安装，但请**不要选择任何桌面环境**。
+或者你也可以从 ISO 手动安装：请**只勾选 Xfce 桌面**，并**取消其它所有桌面环境**。
 
 通过 SSH 登录到新安装的虚拟机后，执行：
 
@@ -65,7 +65,7 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 ## 说明
 
 - 脚本会尝试与一个正在运行的 XRDP 会话交互，以可靠应用 XFCE 设置。若不存在 XRDP 会话，它会尝试创建一个。
-- 如果无法检测到 `xfce4-panel` 或 DBus 会话信息，脚本会回退到“尽力而为”的重启方式。
+- XFCE 面板设置会通过 XRDP 会话内的 `xfconf-query` 写入。
 - 脚本默认禁用 `lightdm`；如果你需要本地 GUI 登录，请手动重新启用。
 
 ## 故障排查

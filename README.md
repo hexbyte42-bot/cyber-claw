@@ -8,7 +8,7 @@ You must run it on a clean installed debian 13 (trixie) cloud image.
 
 Checkout "cloud image" at <https://www.debian.org/distrib/>, and choose the right one for you.
 
-Or you can manually install from ISO and **don't select any desktop environment**.
+Or you can manually install from ISO: **select only Xfce desktop**, and **deselect all other desktop environments**.
 
 SSH to your newly installed VM, and run:
 
@@ -65,7 +65,7 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 ## Notes
 
 - The script tries to interact with a live XRDP session to apply XFCE settings reliably. If no XRDP session exists, it will attempt to create one.
-- If `xfce4-panel` or DBus session info cannot be detected, the script falls back to a best-effort restart.
+- XFCE panel settings are written via `xfconf-query` in the XRDP session.
 - The script disables `lightdm` by default; if you want a local GUI login, re-enable it manually.
 
 ## Troubleshooting
