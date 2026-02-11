@@ -99,3 +99,50 @@ jobs:
           set -euo pipefail
           chmod +x install-xfce-xrdp-on-debian.sh
           sudo bash ./install-xfce-xrdp-on-debian.sh
+
+  shutdown-vm:
+    if: ${{ always() }}
+    needs: [reset-vm, run-script]
+    runs-on: [self-hosted, pve-controller]
+    environment: self-hosted-on-tiger
+    timeout-minutes: 10
+
+    steps:
+      - name: Shutdown test VM on Proxmox
+        env:
+          PVE_HOST: ${{ secrets.PVE_HOST }}
+          PVE_TOKEN_ID: ${{ secrets.PVE_TOKEN_ID }}
+          PVE_TOKEN_SECRET: ${{ secrets.PVE_TOKEN_SECRET }}
+          PVE_NODE: ${{ secrets.PVE_NODE }}
+          PVE_VMID: ${{ secrets.PVE_VMID }}
+        run: |
+          set -euo pipefail
+          auth="Authorization: PVEAPIToken=${PVE_TOKEN_ID}=${PVE_TOKEN_SECRET}"
+
+          extract_upid() {
+            sed -n 's/.*"data":"\([^"]*\)".*/\1/p'
+          }
+
+          wait_upid() {
+            local upid="$1"
+            local exitstatus=""
+            for i in {1..120}; do
+              task_json="$(curl -sk -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/tasks/${upid}/status")"
+              exitstatus="$(echo "$task_json" | sed -n 's/.*"exitstatus":"\([^"]*\)".*/\1/p')"
+              status="$(echo "$task_json" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')"
+              echo "Shutdown task $upid check #$i: status=${status:-unknown} exit=${exitstatus:-pending}"
+              if [ "$status" = "stopped" ] || [ -n "$exitstatus" ]; then
+                break
+              fi
+              sleep 2
+            done
+            [ "$exitstatus" = "OK" ]
+          }
+
+          echo "Stopping VM ${PVE_VMID} after test..."
+          stop_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/stop" | extract_upid || true)"
+          if [ -n "${stop_upid:-}" ]; then
+            wait_upid "$stop_upid" || true
+          fi
+
+          echo "Shutdown step completed."
