@@ -1,4 +1,4 @@
-name: Integration Run (Self-hosted + Proxmox Reset)
+name: Integration Run (Self-hosted)
 
 on:
   workflow_dispatch:
