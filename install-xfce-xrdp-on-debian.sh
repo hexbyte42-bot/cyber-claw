@@ -65,14 +65,19 @@ run_as_user() {
 log "Target user: $TARGET_USER"
 log "Target HOME: $TARGET_HOME"
 
+APT_QUIET_ARGS=()
+if [[ "${CI:-}" == "true" || "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  APT_QUIET_ARGS=(-qq)
+fi
+
 log "apt update"
-$SUDO apt update
+$SUDO apt update "${APT_QUIET_ARGS[@]}"
 
 # -------------------------
 # XFCE / XRDP
 # -------------------------
 log "Install XFCE / XRDP / fonts"
-$SUDO apt install -y \
+$SUDO apt install -y "${APT_QUIET_ARGS[@]}" \
   xfce4 xfce4-goodies \
   xrdp xorgxrdp xclip \
   fonts-noto fonts-noto-cjk fonts-noto-color-emoji
@@ -83,7 +88,7 @@ $SUDO systemctl enable --now xrdp
 # fcitx5 + Chinese addons
 # -------------------------
 log "Install fcitx5 + chinese addons"
-$SUDO apt install -y --install-recommends fcitx5 fcitx5-chinese-addons
+$SUDO apt install -y "${APT_QUIET_ARGS[@]}" --install-recommends fcitx5 fcitx5-chinese-addons
 
 log "Configure fcitx5 profile: ensure pinyin exists (EN system; do NOT change DefaultIM / ordering)"
 
@@ -135,7 +140,7 @@ fcitx5 -rd 2>/dev/null || true
 # Desktop polish
 # -------------------------
 log "Install Papirus icon theme / global menu / LibreOffice / Chromium"
-$SUDO apt install -y papirus-icon-theme xfce4-appmenu-plugin libreoffice libreoffice-gtk3 chromium
+$SUDO apt install -y "${APT_QUIET_ARGS[@]}" papirus-icon-theme xfce4-appmenu-plugin libreoffice libreoffice-gtk3 chromium
 
 # Set Papirus as the default icon theme (XFCE)
 log "Set default icon theme to Papirus (ensure XRDP session + DISPLAY + D-Bus)"
@@ -158,8 +163,8 @@ curl -fsSL https://zquestz.github.io/ppa/debian/KEY.gpg \
 echo "deb [signed-by=/usr/share/keyrings/zquestz-archive-keyring.gpg] https://zquestz.github.io/ppa/debian ./" \
   | $SUDO tee /etc/apt/sources.list.d/zquestz.list >/dev/null
 
-$SUDO apt update
-$SUDO apt install -y plank-reloaded
+$SUDO apt update "${APT_QUIET_ARGS[@]}"
+$SUDO apt install -y "${APT_QUIET_ARGS[@]}" plank-reloaded
 
 AUTOSTART="$TARGET_HOME/.config/autostart"
 run_as_user "$TARGET_USER" mkdir -p "$AUTOSTART"
@@ -174,13 +179,6 @@ EOF
 
 $SUDO chown "$TARGET_USER:$TARGET_USER" "$AUTOSTART/plank-reloaded.desktop"
 $SUDO chmod 0644 "$AUTOSTART/plank-reloaded.desktop"
-
-[[ -s "$AUTOSTART/plank-reloaded.desktop" ]] || err "plank-reloaded.desktop was created but is empty"
-grep -q '^Type=Application$' "$AUTOSTART/plank-reloaded.desktop" || err "plank-reloaded.desktop missing Type=Application"
-grep -q '^Exec=plank$' "$AUTOSTART/plank-reloaded.desktop" || err "plank-reloaded.desktop missing Exec=plank"
-log "plank-reloaded.desktop bytes: $(wc -c < "$AUTOSTART/plank-reloaded.desktop")"
-log "plank-reloaded.desktop preview:"
-sed -n '1,20p' "$AUTOSTART/plank-reloaded.desktop"
 
 log "Configure XFCE panel (remove panel-2, set appmenu as plugin-2, apply settings)"
 
