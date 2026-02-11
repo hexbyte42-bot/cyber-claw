@@ -1,4 +1,4 @@
-name: Integration Run (Ubuntu 24.04)
+name: Integration Run (Self-hosted + Proxmox Reset)
 
 on:
   workflow_dispatch:
@@ -11,18 +11,48 @@ on:
       - "install-xfce-xrdp-on-debian.sh"
 
 jobs:
-  run-script-on-ubuntu:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
+  reset-vm:
+    runs-on: [self-hosted, github-controller]
+    timeout-minutes: 10
+
+    steps:
+      - name: Rollback test VM on Proxmox
+        env:
+          PVE_HOST: ${{ secrets.PVE_HOST }}
+          PVE_TOKEN_ID: ${{ secrets.PVE_TOKEN_ID }}
+          PVE_TOKEN_SECRET: ${{ secrets.PVE_TOKEN_SECRET }}
+          PVE_NODE: ${{ secrets.PVE_NODE }}
+          PVE_VMID: ${{ secrets.PVE_VMID }}
+          PVE_SNAPSHOT: ${{ secrets.PVE_SNAPSHOT }}
+        run: |
+          set -euo pipefail
+          auth="Authorization: PVEAPIToken=${PVE_TOKEN_ID}=${PVE_TOKEN_SECRET}"
+
+          echo "Stopping VM ${PVE_VMID}..."
+          curl -sk -X POST -H "$auth" \
+            "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/stop" || true
+
+          sleep 5
+
+          echo "Rolling back snapshot ${PVE_SNAPSHOT}..."
+          curl -sk -X POST -H "$auth" \
+            "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/snapshot/${PVE_SNAPSHOT}/rollback"
+
+          echo "Starting VM ${PVE_VMID}..."
+          curl -sk -X POST -H "$auth" \
+            "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/start"
+
+          echo "Waiting for test runner to come online..."
+          sleep 45
+
+  run-script:
+    needs: reset-vm
+    runs-on: [self-hosted, github-cyber-claw-debian]
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Prepare environment
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y sudo curl dbus
 
       - name: Run installer script
         run: |
