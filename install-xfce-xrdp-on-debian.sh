@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # =========================
-# Debian + XFCE + XRDP 全自动安装（OpenClaw 安装前）
+# Debian + XFCE + XRDP automated setup (before installing OpenClaw)
 # =========================
 
 log() { printf "\n\033[1;32m[+] %s\033[0m\n" "$*"; }
@@ -11,14 +11,14 @@ err() { printf "\n\033[1;31m[✗] %s\033[0m\n" "$*"; exit 1; }
 ensure_xrdp_display() {
   local disp out
 
-  # 先从现有会话里找 (Display: :10 紧挨着 User: xxx 的上一行)
+  # Try to find an existing session first (Display: :10 appears right above User: xxx)
   disp="$($SUDO -u "$TARGET_USER" xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
     $1=="Display:" {d=$2}
     $1=="User:" && $2==u {print d; exit}
   ')"
 
   if [[ -z "${disp:-}" ]]; then
-    # 没有会话就启动一个，并从输出抓 display=:xx
+    # No session found: start one and parse display=:xx from the output
     out="$($SUDO -u "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
     disp="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
   fi
@@ -40,7 +40,7 @@ run_in_xrdp_session() {
   $SUDO -u "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
 }
 
-# 目标用户（写 ~/.config 的那个）
+# Target user (the one whose ~/.config will be written)
 TARGET_USER="${SUDO_USER:-$(id -un)}"
 TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
 [[ -d "$TARGET_HOME" ]] || err "Cannot determine HOME directory for user: $TARGET_USER"
@@ -123,13 +123,13 @@ fcitx5 -rd 2>/dev/null || true
 log "Install Papirus icon theme / global menu / LibreOffice / Chromium"
 $SUDO apt install -y papirus-icon-theme xfce4-appmenu-plugin libreoffice libreoffice-gtk3 chromium
 
-# 👉【新增】设置 Papirus 为默认图标主题（XFCE）
+# Set Papirus as the default icon theme (XFCE)
 log "Set default icon theme to Papirus (ensure XRDP session + DISPLAY + D-Bus)"
 
 DISPLAY_NUM="$(ensure_xrdp_display)"
 log "Using DISPLAY=$DISPLAY_NUM"
 
-# dbus-run-session 比 dbus-launch 更稳：直接给这一条命令一个临时 session bus
+# dbus-run-session is more reliable than dbus-launch: it provides a temporary session bus for this command
 $SUDO -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" dbus-run-session -- \
   xfconf-query -c xsettings -p /Net/IconThemeName -s Papirus
 
