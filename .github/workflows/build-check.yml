@@ -3,7 +3,11 @@ name: Build Check
 on:
   push:
     branches: ["**"]
+    paths:
+      - "install-xfce-xrdp-on-debian.sh"
   pull_request:
+    paths:
+      - "install-xfce-xrdp-on-debian.sh"
 
 jobs:
   script-check:
