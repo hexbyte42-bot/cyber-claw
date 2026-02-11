@@ -176,6 +176,11 @@ $SUDO chown "$TARGET_USER:$TARGET_USER" "$AUTOSTART/plank-reloaded.desktop"
 $SUDO chmod 0644 "$AUTOSTART/plank-reloaded.desktop"
 
 [[ -s "$AUTOSTART/plank-reloaded.desktop" ]] || err "plank-reloaded.desktop was created but is empty"
+grep -q '^Type=Application$' "$AUTOSTART/plank-reloaded.desktop" || err "plank-reloaded.desktop missing Type=Application"
+grep -q '^Exec=plank$' "$AUTOSTART/plank-reloaded.desktop" || err "plank-reloaded.desktop missing Exec=plank"
+log "plank-reloaded.desktop bytes: $(wc -c < "$AUTOSTART/plank-reloaded.desktop")"
+log "plank-reloaded.desktop preview:"
+sed -n '1,20p' "$AUTOSTART/plank-reloaded.desktop"
 
 log "Configure XFCE panel (remove panel-2, set appmenu as plugin-2, apply settings)"
 

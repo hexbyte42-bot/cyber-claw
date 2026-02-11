@@ -1,5 +1,7 @@
 # OpenClaw 的 Debian XFCE + XRDP 配置指南
 
+[![Integration Run (Self-hosted)](https://github.com/riverscn/cyber-claw/actions/workflows/integration-run.yml/badge.svg)](https://github.com/riverscn/cyber-claw/actions/workflows/integration-run.yml)
+
 [English README](./README.md)
 
 ## 一行安装（curl）
