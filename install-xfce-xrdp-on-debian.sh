@@ -25,7 +25,7 @@ ensure_xrdp_display() {
 
   if [[ -z "${disp:-}" ]]; then
     warn "Cannot determine XRDP display for $TARGET_USER. xrdp-sesrun output was:"
-    echo "$out" | sed 's/^/  /'
+    printf '  %s\n' "$out"
     return 1
   fi
 
@@ -164,6 +164,7 @@ rm -f /tmp/plank.desktop
 
 log "Configure XFCE panel (remove panel-2, set appmenu as plugin-2, apply settings)"
 
+# shellcheck disable=SC2016
 run_in_xrdp_session bash -lc '
 set -euo pipefail
 command -v xfconf-query >/dev/null
