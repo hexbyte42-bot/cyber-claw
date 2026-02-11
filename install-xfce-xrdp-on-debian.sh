@@ -86,6 +86,7 @@ log "Target HOME: $TARGET_HOME"
 APT_QUIET_ARGS=()
 if [[ "$APT_QUIET" == "1" ]]; then
   APT_QUIET_ARGS=(-qq)
+  export DEBIAN_FRONTEND=noninteractive
 fi
 # Use apt-get in scripts for stable CLI behavior.
 APT_CMD=(apt-get "${APT_QUIET_ARGS[@]}")
