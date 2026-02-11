@@ -20,6 +20,10 @@ This repository contains a single script that prepares a Debian machine with XFC
 
 After that, you can use ***Windows Remote Desktop*** or ***Windows App for Mac*** to connect your VM with IP address.
 
+### Plank (dock) usage tip
+
+This setup uses `plank-reloaded` as the dock. To open its settings menu, hold **Ctrl** and click on the dock.
+
 ## What the Script Does
 
 `install-xfce-xrdp-on-debian.sh` performs the following:

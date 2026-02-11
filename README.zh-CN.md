@@ -20,6 +20,10 @@ curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-
 
 完成后，你可以使用 ***Windows 远程桌面*** 或 ***Windows App for Mac***，通过 IP 地址连接到你的虚拟机。
 
+### Plank（dock）使用提示
+
+本配置使用 `plank-reloaded` 作为 dock。需要打开它的配置菜单时，在 dock 上**按住 Ctrl 再点击**即可弹出。
+
 ## 脚本会做什么
 
 `install-xfce-xrdp-on-debian.sh` 会执行以下操作：
