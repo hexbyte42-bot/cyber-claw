@@ -1,6 +1,7 @@
 name: Integration Run (Debian 13 VM)
 
 on:
+  workflow_dispatch:
   push:
     branches: ["**"]
     paths:
