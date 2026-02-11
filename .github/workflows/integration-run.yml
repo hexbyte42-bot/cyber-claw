@@ -47,7 +47,7 @@ jobs:
 
   run-script:
     needs: reset-vm
-    runs-on: [self-hosted, github-cyber-claw-debian]
+    runs-on: [self-hosted, debian13, minimal]
     timeout-minutes: 60
 
     steps:
