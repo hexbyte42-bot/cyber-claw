@@ -12,14 +12,14 @@ ensure_xrdp_display() {
   local disp out
 
   # Try to find an existing session first (Display: :10 appears right above User: xxx)
-  disp="$($SUDO -u "$TARGET_USER" xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
+  disp="$(run_as_user "$TARGET_USER" xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
     $1=="Display:" {d=$2}
     $1=="User:" && $2==u {print d; exit}
   ')"
 
   if [[ -z "${disp:-}" ]]; then
     # No session found: start one and parse display=:xx from the output
-    out="$($SUDO -u "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
+    out="$(run_as_user "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
     disp="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
   fi
 
@@ -37,7 +37,7 @@ run_in_xrdp_session() {
   log "Using DISPLAY=$disp for xfconf/xfce4-panel operations"
 
   # dbus-run-session gives a private session bus so xfconf doesn't need autolaunch
-  $SUDO -u "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
+  run_as_user "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
 }
 
 # Target user (the one whose ~/.config will be written)
@@ -46,7 +46,21 @@ TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
 [[ -d "$TARGET_HOME" ]] || err "Cannot determine HOME directory for user: $TARGET_USER"
 
 SUDO="sudo"
-[[ "$(id -u)" -eq 0 ]] && SUDO=""
+if [[ "$(id -u)" -eq 0 ]]; then
+  SUDO=""
+else
+  command -v sudo >/dev/null 2>&1 || err "sudo is required when not running as root"
+fi
+
+run_as_user() {
+  local user="$1"
+  shift
+  if [[ "$(id -u)" -eq 0 ]]; then
+    runuser -u "$user" -- "$@"
+  else
+    sudo -u "$user" "$@"
+  fi
+}
 
 log "Target user: $TARGET_USER"
 log "Target HOME: $TARGET_HOME"
@@ -76,7 +90,7 @@ log "Configure fcitx5 profile: ensure pinyin exists (EN system; do NOT change De
 FCITX_DIR="$TARGET_HOME/.config/fcitx5"
 PROFILE="$FCITX_DIR/profile"
 
-$SUDO -u "$TARGET_USER" mkdir -p "$FCITX_DIR"
+run_as_user "$TARGET_USER" mkdir -p "$FCITX_DIR"
 pkill -x fcitx5 2>/dev/null || true
 
 if [[ ! -f "$PROFILE" ]]; then
@@ -130,7 +144,7 @@ DISPLAY_NUM="$(ensure_xrdp_display)"
 log "Using DISPLAY=$DISPLAY_NUM"
 
 # dbus-run-session is more reliable than dbus-launch: it provides a temporary session bus for this command
-$SUDO -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" dbus-run-session -- \
+run_as_user "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" dbus-run-session -- \
   xfconf-query -c xsettings -p /Net/IconThemeName -s Papirus
 
 # -------------------------
@@ -148,7 +162,7 @@ $SUDO apt update
 $SUDO apt install -y plank-reloaded
 
 AUTOSTART="$TARGET_HOME/.config/autostart"
-$SUDO -u "$TARGET_USER" mkdir -p "$AUTOSTART"
+run_as_user "$TARGET_USER" mkdir -p "$AUTOSTART"
 
 cat > /tmp/plank.desktop <<'EOF'
 [Desktop Entry]
@@ -203,7 +217,7 @@ set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode          fa
 log "Configure openclaw-gateway systemd user override"
 
 OVR_DIR="$TARGET_HOME/.config/systemd/user/openclaw-gateway.service.d"
-$SUDO -u "$TARGET_USER" mkdir -p "$OVR_DIR"
+run_as_user "$TARGET_USER" mkdir -p "$OVR_DIR"
 
 cat > /tmp/10-xrdp.conf <<EOF
 [Service]
