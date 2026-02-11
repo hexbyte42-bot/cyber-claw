@@ -52,11 +52,7 @@ jobs:
           echo "Waiting for VM status=running..."
           for i in {1..36}; do
             status_json="$(curl -sk -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/current")"
-            vm_status="$(python - "$status_json" <<'PY'
-import json,sys
-print(json.loads(sys.argv[1]).get('data',{}).get('status',''))
-PY
-)"
+            vm_status="$(python -c 'import json,sys; print(json.loads(sys.argv[1]).get("data",{}).get("status",""))' "$status_json")"
             echo "VM status check #$i: ${vm_status:-unknown}"
             if [ "$vm_status" = "running" ]; then
               break
@@ -77,18 +73,7 @@ PY
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/${GH_REPO}/actions/runners?per_page=100")"
 
-            runner_online="$(python - "$runners_json" <<'PY'
-import json,sys
-obj=json.loads(sys.argv[1])
-ok=False
-for r in obj.get('runners',[]):
-    labels={l.get('name') for l in r.get('labels',[])}
-    if {'debian13','minimal'}.issubset(labels) and r.get('status')=='online':
-        ok=True
-        break
-print('true' if ok else 'false')
-PY
-)"
+            runner_online="$(python -c 'import json,sys; obj=json.loads(sys.argv[1]); print("true" if any({"debian13","minimal"}.issubset({l.get("name") for l in r.get("labels",[])}) and r.get("status")=="online" for r in obj.get("runners",[])) else "false")' "$runners_json")"
             echo "Runner online check #$i: $runner_online"
             if [ "$runner_online" = "true" ]; then
               break
