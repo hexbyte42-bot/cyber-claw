@@ -12,7 +12,7 @@ on:
 
 jobs:
   reset-vm:
-    runs-on: [self-hosted, github-controller]
+    runs-on: [self-hosted, pve-controller]
     timeout-minutes: 10
 
     steps:
