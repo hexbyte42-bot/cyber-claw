@@ -1,4 +1,4 @@
-name: Integration Run (Debian 13 VM)
+name: Integration Run (Ubuntu 24.04)
 
 on:
   workflow_dispatch:
@@ -11,26 +11,21 @@ on:
       - "install-xfce-xrdp-on-debian.sh"
 
 jobs:
-  run-script-in-debian-vm:
-    runs-on: ubuntu-latest
+  run-script-on-ubuntu:
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run installer script in Debian 13 VM
-        uses: vmactions/debian-vm@v1
-        with:
-          release: trixie
-          cpu: 2
-          mem: 4096
-          usesh: true
-          copyback: false
-          prepare: |
-            apt-get update
-            apt-get install -y curl sudo dbus
-          run: |
-            set -euo pipefail
-            chmod +x install-xfce-xrdp-on-debian.sh
-            bash ./install-xfce-xrdp-on-debian.sh
+      - name: Prepare environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sudo curl dbus
+
+      - name: Run installer script
+        run: |
+          set -euo pipefail
+          chmod +x install-xfce-xrdp-on-debian.sh
+          sudo bash ./install-xfce-xrdp-on-debian.sh
