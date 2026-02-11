@@ -86,20 +86,27 @@ log "Target HOME: $TARGET_HOME"
 APT_QUIET_ARGS=()
 if [[ "$APT_QUIET" == "1" ]]; then
   APT_QUIET_ARGS=(-qq)
-  export DEBIAN_FRONTEND=noninteractive
 fi
 # Use apt-get in scripts for stable CLI behavior.
 APT_CMD=(apt-get "${APT_QUIET_ARGS[@]}")
 log "APT quiet mode: $APT_QUIET"
 
+apt_run() {
+  if [[ "$APT_QUIET" == "1" ]]; then
+    $SUDO DEBIAN_FRONTEND=noninteractive "${APT_CMD[@]}" "$@"
+  else
+    $SUDO "${APT_CMD[@]}" "$@"
+  fi
+}
+
 log "apt-get update"
-$SUDO "${APT_CMD[@]}" update
+apt_run update
 
 # -------------------------
 # XFCE / XRDP
 # -------------------------
 log "Install XFCE / XRDP / fonts"
-$SUDO "${APT_CMD[@]}" install -y \
+apt_run install -y \
   xfce4 xfce4-goodies \
   xrdp xorgxrdp xclip \
   fonts-noto fonts-noto-cjk fonts-noto-color-emoji
@@ -110,7 +117,7 @@ $SUDO systemctl enable --now xrdp
 # fcitx5 + Chinese addons
 # -------------------------
 log "Install fcitx5 + chinese addons"
-$SUDO "${APT_CMD[@]}" install -y --install-recommends fcitx5 fcitx5-chinese-addons
+apt_run install -y --install-recommends fcitx5 fcitx5-chinese-addons
 
 log "Configure fcitx5 profile: ensure pinyin exists (EN system; do NOT change DefaultIM / ordering)"
 
@@ -162,7 +169,7 @@ fcitx5 -rd 2>/dev/null || true
 # Desktop polish
 # -------------------------
 log "Install Papirus icon theme / global menu / LibreOffice / Chromium"
-$SUDO "${APT_CMD[@]}" install -y papirus-icon-theme xfce4-appmenu-plugin libreoffice libreoffice-gtk3 chromium
+apt_run install -y papirus-icon-theme xfce4-appmenu-plugin libreoffice libreoffice-gtk3 chromium
 
 # Set Papirus as the default icon theme (XFCE)
 log "Set default icon theme to Papirus (ensure XRDP session + DISPLAY + D-Bus)"
@@ -185,8 +192,8 @@ curl -fsSL https://zquestz.github.io/ppa/debian/KEY.gpg \
 echo "deb [signed-by=/usr/share/keyrings/zquestz-archive-keyring.gpg] https://zquestz.github.io/ppa/debian ./" \
   | $SUDO tee /etc/apt/sources.list.d/zquestz.list >/dev/null
 
-$SUDO "${APT_CMD[@]}" update
-$SUDO "${APT_CMD[@]}" install -y plank-reloaded
+apt_run update
+apt_run install -y plank-reloaded
 
 AUTOSTART="$TARGET_HOME/.config/autostart"
 run_as_user "$TARGET_USER" mkdir -p "$AUTOSTART"
