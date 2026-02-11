@@ -15,7 +15,27 @@ permissions:
   actions: read
 
 jobs:
+  precheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Bash syntax check
+        run: bash -n install-xfce-xrdp-on-debian.sh
+
+      - name: ShellCheck
+        run: shellcheck install-xfce-xrdp-on-debian.sh
+
   reset-vm:
+    needs: precheck
     runs-on: [self-hosted, pve-controller]
     environment: self-hosted-on-tiger
     timeout-minutes: 10
