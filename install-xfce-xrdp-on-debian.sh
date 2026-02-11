@@ -67,7 +67,7 @@ log "Target HOME: $TARGET_HOME"
 
 APT_QUIET_ARGS=()
 if [[ "${APT_QUIET:-}" == "1" ]]; then
-  APT_QUIET_ARGS=(-q)
+  APT_QUIET_ARGS=(-qq)
 fi
 
 log "apt update"
