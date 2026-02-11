@@ -164,7 +164,7 @@ $SUDO apt install -y plank-reloaded
 AUTOSTART="$TARGET_HOME/.config/autostart"
 run_as_user "$TARGET_USER" mkdir -p "$AUTOSTART"
 
-cat > /tmp/plank.desktop <<'EOF'
+cat > "$AUTOSTART/plank-reloaded.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Plank
@@ -172,9 +172,10 @@ Exec=plank
 OnlyShowIn=XFCE;
 EOF
 
-$SUDO install -o "$TARGET_USER" -g "$TARGET_USER" -m 0644 \
-  /tmp/plank.desktop "$AUTOSTART/plank-reloaded.desktop"
-rm -f /tmp/plank.desktop
+$SUDO chown "$TARGET_USER:$TARGET_USER" "$AUTOSTART/plank-reloaded.desktop"
+$SUDO chmod 0644 "$AUTOSTART/plank-reloaded.desktop"
+
+[[ -s "$AUTOSTART/plank-reloaded.desktop" ]] || err "plank-reloaded.desktop was created but is empty"
 
 log "Configure XFCE panel (remove panel-2, set appmenu as plugin-2, apply settings)"
 
