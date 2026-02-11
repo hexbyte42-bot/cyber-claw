@@ -40,6 +40,24 @@ run_in_xrdp_session() {
   run_as_user "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
 }
 
+# Optional flags (for CI / automation)
+APT_QUIET="${APT_QUIET:-0}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --apt-quiet)
+      APT_QUIET=1
+      ;;
+    -h|--help)
+      echo "Usage: $0 [--apt-quiet]"
+      exit 0
+      ;;
+    *)
+      err "Unknown argument: $1"
+      ;;
+  esac
+  shift
+done
+
 # Target user (the one whose ~/.config will be written)
 TARGET_USER="${SUDO_USER:-$(id -un)}"
 TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
@@ -66,7 +84,7 @@ log "Target user: $TARGET_USER"
 log "Target HOME: $TARGET_HOME"
 
 APT_QUIET_ARGS=()
-if [[ "${APT_QUIET:-}" == "1" ]]; then
+if [[ "$APT_QUIET" == "1" ]]; then
   APT_QUIET_ARGS=(-qq)
 fi
 
