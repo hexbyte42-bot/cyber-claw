@@ -87,10 +87,11 @@ APT_QUIET_ARGS=()
 if [[ "$APT_QUIET" == "1" ]]; then
   APT_QUIET_ARGS=(-qq)
 fi
-APT_CMD=(apt "${APT_QUIET_ARGS[@]}")
+# Use apt-get in scripts for stable CLI behavior.
+APT_CMD=(apt-get "${APT_QUIET_ARGS[@]}")
 log "APT quiet mode: $APT_QUIET"
 
-log "apt update"
+log "apt-get update"
 $SUDO "${APT_CMD[@]}" update
 
 # -------------------------
