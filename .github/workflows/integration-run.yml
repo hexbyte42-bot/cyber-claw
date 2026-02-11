@@ -10,6 +10,10 @@ on:
     paths:
       - "install-xfce-xrdp-on-debian.sh"
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   reset-vm:
     runs-on: [self-hosted, pve-controller]
@@ -17,7 +21,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Rollback test VM on Proxmox
+      - name: Rollback test VM on Proxmox and wait until runner is online
         env:
           PVE_HOST: ${{ secrets.PVE_HOST }}
           PVE_TOKEN_ID: ${{ secrets.PVE_TOKEN_ID }}
@@ -25,6 +29,8 @@ jobs:
           PVE_NODE: ${{ secrets.PVE_NODE }}
           PVE_VMID: ${{ secrets.PVE_VMID }}
           PVE_SNAPSHOT: ${{ secrets.PVE_SNAPSHOT }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: riverscn/cyber-claw
         run: |
           set -euo pipefail
           auth="Authorization: PVEAPIToken=${PVE_TOKEN_ID}=${PVE_TOKEN_SECRET}"
@@ -43,9 +49,57 @@ jobs:
           curl -sk -X POST -H "$auth" \
             "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/start"
 
-          echo "Waiting for test runner to come online..."
-          sleep 45
+          echo "Waiting for VM status=running..."
+          for i in {1..36}; do
+            status_json="$(curl -sk -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/current")"
+            vm_status="$(python - "$status_json" <<'PY'
+import json,sys
+print(json.loads(sys.argv[1]).get('data',{}).get('status',''))
+PY
+)"
+            echo "VM status check #$i: ${vm_status:-unknown}"
+            if [ "$vm_status" = "running" ]; then
+              break
+            fi
+            sleep 5
+          done
 
+          if [ "${vm_status:-}" != "running" ]; then
+            echo "VM did not reach running state in time"
+            exit 1
+          fi
+
+          echo "Waiting for GitHub test runner (labels: debian13,minimal) to be online..."
+          runner_online="false"
+          for i in {1..60}; do
+            runners_json="$(curl -sS \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GH_REPO}/actions/runners?per_page=100")"
+
+            runner_online="$(python - "$runners_json" <<'PY'
+import json,sys
+obj=json.loads(sys.argv[1])
+ok=False
+for r in obj.get('runners',[]):
+    labels={l.get('name') for l in r.get('labels',[])}
+    if {'debian13','minimal'}.issubset(labels) and r.get('status')=='online':
+        ok=True
+        break
+print('true' if ok else 'false')
+PY
+)"
+            echo "Runner online check #$i: $runner_online"
+            if [ "$runner_online" = "true" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$runner_online" != "true" ]; then
+            echo "Target test runner did not come online in time"
+            exit 1
+          fi
   run-script:
     needs: reset-vm
     runs-on: [self-hosted, debian13, minimal]
