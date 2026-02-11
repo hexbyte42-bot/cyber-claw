@@ -29,8 +29,6 @@ jobs:
           PVE_NODE: ${{ secrets.PVE_NODE }}
           PVE_VMID: ${{ secrets.PVE_VMID }}
           PVE_SNAPSHOT: ${{ secrets.PVE_SNAPSHOT }}
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: riverscn/cyber-claw
         run: |
           set -euo pipefail
           auth="Authorization: PVEAPIToken=${PVE_TOKEN_ID}=${PVE_TOKEN_SECRET}"
@@ -86,24 +84,7 @@ jobs:
             exit 1
           fi
 
-          echo "Waiting for GitHub test runner (labels: debian13,minimal) to be online..."
-          runner_online="false"
-          for i in {1..60}; do
-            runners_json="$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${GH_REPO}/actions/runners?per_page=100")"
-            if echo "$runners_json" | grep -q '"status":"online"' && echo "$runners_json" | grep -q '"name":"debian13"' && echo "$runners_json" | grep -q '"name":"minimal"'; then
-              runner_online="true"
-            fi
-            echo "Runner online check #$i: $runner_online"
-            if [ "$runner_online" = "true" ]; then
-              break
-            fi
-            sleep 5
-          done
-
-          if [ "$runner_online" != "true" ]; then
-            echo "Target test runner did not come online in time"
-            exit 1
-          fi
+          echo "VM is running; handoff to run-script job on self-hosted test runner."
   run-script:
     needs: reset-vm
     runs-on: [self-hosted, debian13, minimal]
