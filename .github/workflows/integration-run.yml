@@ -35,24 +35,45 @@ jobs:
           set -euo pipefail
           auth="Authorization: PVEAPIToken=${PVE_TOKEN_ID}=${PVE_TOKEN_SECRET}"
 
-          echo "Stopping VM ${PVE_VMID}..."
-          curl -sk -X POST -H "$auth" \
-            "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/stop" || true
+          extract_upid() {
+            sed -n 's/.*"data":"\([^"]*\)".*/\1/p'
+          }
 
-          sleep 5
+          wait_upid() {
+            local upid="$1"
+            local exitstatus=""
+            for i in {1..120}; do
+              task_json="$(curl -sk -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/tasks/${upid}/status")"
+              exitstatus="$(echo "$task_json" | sed -n 's/.*"exitstatus":"\([^"]*\)".*/\1/p')"
+              status="$(echo "$task_json" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')"
+              echo "Task $upid check #$i: status=${status:-unknown} exit=${exitstatus:-pending}"
+              if [ "$status" = "stopped" ] || [ -n "$exitstatus" ]; then
+                break
+              fi
+              sleep 2
+            done
+            [ "$exitstatus" = "OK" ]
+          }
+
+          echo "Stopping VM ${PVE_VMID}..."
+          stop_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/stop" | extract_upid || true)"
+          if [ -n "${stop_upid:-}" ]; then
+            wait_upid "$stop_upid" || true
+          fi
 
           echo "Rolling back snapshot ${PVE_SNAPSHOT}..."
-          curl -sk -X POST -H "$auth" \
-            "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/snapshot/${PVE_SNAPSHOT}/rollback"
+          rollback_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/snapshot/${PVE_SNAPSHOT}/rollback" | extract_upid)"
+          wait_upid "$rollback_upid"
 
           echo "Starting VM ${PVE_VMID}..."
-          curl -sk -X POST -H "$auth" \
-            "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/start"
+          start_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/start" | extract_upid)"
+          wait_upid "$start_upid"
 
           echo "Waiting for VM status=running..."
+          vm_status=""
           for i in {1..36}; do
             status_json="$(curl -sk -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/current")"
-            vm_status="$(python -c 'import json,sys; print(json.loads(sys.argv[1]).get("data",{}).get("status",""))' "$status_json")"
+            vm_status="$(echo "$status_json" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')"
             echo "VM status check #$i: ${vm_status:-unknown}"
             if [ "$vm_status" = "running" ]; then
               break
@@ -68,12 +89,10 @@ jobs:
           echo "Waiting for GitHub test runner (labels: debian13,minimal) to be online..."
           runner_online="false"
           for i in {1..60}; do
-            runners_json="$(curl -sS \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${GH_REPO}/actions/runners?per_page=100")"
-
-            runner_online="$(python -c 'import json,sys; obj=json.loads(sys.argv[1]); print("true" if any({"debian13","minimal"}.issubset({l.get("name") for l in r.get("labels",[])}) and r.get("status")=="online" for r in obj.get("runners",[])) else "false")' "$runners_json")"
+            runners_json="$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${GH_REPO}/actions/runners?per_page=100")"
+            if echo "$runners_json" | grep -q '"status":"online"' && echo "$runners_json" | grep -q '"name":"debian13"' && echo "$runners_json" | grep -q '"name":"minimal"'; then
+              runner_online="true"
+            fi
             echo "Runner online check #$i: $runner_online"
             if [ "$runner_online" = "true" ]; then
               break
