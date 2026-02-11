@@ -66,8 +66,8 @@ log "Target user: $TARGET_USER"
 log "Target HOME: $TARGET_HOME"
 
 APT_QUIET_ARGS=()
-if [[ "${CI:-}" == "true" || "${GITHUB_ACTIONS:-}" == "true" ]]; then
-  APT_QUIET_ARGS=(-qq)
+if [[ "${APT_QUIET:-}" == "1" ]]; then
+  APT_QUIET_ARGS=(-q)
 fi
 
 log "apt update"
