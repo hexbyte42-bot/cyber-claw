@@ -362,6 +362,17 @@ run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "p
 
 if [[ -n "$(latest_xrdp_display)" ]]; then
   log "Logging out current desktop session(s) for $TARGET_USER"
+
+  # Prefer XRDP-native session termination (more reliable for xrdp sessions).
+  xrdp_sid="$(xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
+    $1=="Session" && $2=="ID:" {sid=$3}
+    $1=="User:" && $2==u {print sid; exit}
+  ')"
+  if [[ -n "${xrdp_sid:-}" ]]; then
+    xrdp-sesadmin -c kill -s "$xrdp_sid" || true
+  fi
+
+  # Fallback: terminate first loginctl session for this user if still present.
   sid="$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$TARGET_USER" '$3==u {print $1; exit}')"
   if [[ -n "${sid:-}" ]]; then
     loginctl terminate-session "$sid" || true
