@@ -155,7 +155,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          get_display() {
+          SESSION_DISPLAY=""
+          SESSION_DBUS=""
+
+          latest_xrdp_display() {
             xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
               $1=="Display:" {d=$2}
               $1=="User:" && $2==u {last=d}
@@ -163,40 +166,77 @@ jobs:
             '
           }
 
-          get_dbus_for_display() {
-            local disp="$1" uid p env_display env_bus
+          find_session_context() {
+            local uid p env_display env_bus bus_path
             uid="$(id -u "$TARGET_USER")"
 
-            if [ -S "/run/user/${uid}/bus" ]; then
-              echo "unix:path=/run/user/${uid}/bus"
+            bus_path="/run/user/${uid}/bus"
+            if [ -S "$bus_path" ]; then
+              SESSION_DBUS="unix:path=$bus_path"
+            fi
+
+            SESSION_DISPLAY="$(latest_xrdp_display)"
+
+            if [ -z "${SESSION_DISPLAY:-}" ]; then
+              for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel|Xorg|Xwayland' 2>/dev/null || true); do
+                [ -r "/proc/$p/environ" ] || continue
+                env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
+                [ -n "${env_display:-}" ] || continue
+                SESSION_DISPLAY="$env_display"
+                break
+              done
+            fi
+
+            if [ -z "${SESSION_DBUS:-}" ]; then
+              for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
+                [ -r "/proc/$p/environ" ] || continue
+                env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
+                [ -n "${env_bus:-}" ] || continue
+                SESSION_DBUS="$env_bus"
+                break
+              done
+            fi
+
+            [ -n "${SESSION_DISPLAY:-}" ] && [ -n "${SESSION_DBUS:-}" ]
+          }
+
+          ensure_session_context() {
+            local out disp
+
+            if [ -n "${SESSION_DISPLAY:-}" ] && [ -n "${SESSION_DBUS:-}" ]; then
               return 0
             fi
 
-            for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
-              [ -r "/proc/$p/environ" ] || continue
-              env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
-              [ "$env_display" = "$disp" ] || continue
-              env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
-              [ -n "${env_bus:-}" ] || continue
-              echo "$env_bus"
+            echo "Detecting existing graphical session context (DISPLAY + DBUS)..."
+            if find_session_context; then
+              echo "Found existing session context: DISPLAY=$SESSION_DISPLAY"
               return 0
-            done
+            fi
 
+            echo "No session context found. Starting XRDP session and re-detecting context..."
+            out="$(sudo -u "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
+            echo "$out"
+            disp="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
+            if [ -n "${disp:-}" ]; then
+              SESSION_DISPLAY="$disp"
+            fi
+
+            if find_session_context; then
+              echo "XRDP session context ready: DISPLAY=$SESSION_DISPLAY"
+              return 0
+            fi
+
+            echo "Cannot determine graphical session context for $TARGET_USER"
             return 1
           }
 
-          DISPLAY_NUM="$(get_display || true)"
-          [ -n "${DISPLAY_NUM:-}" ] || { echo "No active XRDP session for $TARGET_USER"; exit 1; }
-          DBUS_ADDR="$(get_dbus_for_display "$DISPLAY_NUM" || true)"
-          [ -n "${DBUS_ADDR:-}" ] || { echo "No DBUS address found for DISPLAY=$DISPLAY_NUM"; exit 1; }
-
-          echo "XRDP session list:"
-          xrdp-sesadmin -c list 2>/dev/null || true
-          echo "Using DISPLAY=$DISPLAY_NUM"
-          echo "Using DBUS_SESSION_BUS_ADDRESS=$DBUS_ADDR"
-
           run_in_session_context() {
-            sudo -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" DBUS_SESSION_BUS_ADDRESS="$DBUS_ADDR" "$@"
+            ensure_session_context
+            echo "XRDP session list:"
+            xrdp-sesadmin -c list 2>/dev/null || true
+            echo "Using DISPLAY=$SESSION_DISPLAY"
+            echo "Using DBUS_SESSION_BUS_ADDRESS=$SESSION_DBUS"
+            sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" "$@"
           }
 
           echo "appmenu values before screenshot:"
