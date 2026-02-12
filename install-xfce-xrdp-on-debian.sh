@@ -257,30 +257,27 @@ $SUDO systemctl daemon-reload
 
 log "Configure XFCE autostart: restart openclaw-gateway after login"
 
-cat > /tmp/restart-openclaw.desktop <<EOF
+cat > "$AUTOSTART/restart-openclaw-gateway.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Restart OpenClaw Gateway
 Exec=/usr/bin/bash -lc "xrdp-sesadmin -c=list | grep -Eq '^[[:space:]]*User:[[:space:]]*$TARGET_USER\$' && openclaw gateway restart || true"
 X-GNOME-Autostart-enabled=true
 EOF
+$SUDO chown "$TARGET_USER:$TARGET_USER" "$AUTOSTART/restart-openclaw-gateway.desktop"
+$SUDO chmod 0644 "$AUTOSTART/restart-openclaw-gateway.desktop"
 
-$SUDO install -o "$TARGET_USER" -g "$TARGET_USER" -m 0644 \
-  /tmp/restart-openclaw.desktop "$AUTOSTART/restart-openclaw-gateway.desktop"
-rm -f /tmp/restart-openclaw.desktop
-
-cat > /tmp/plank-reloaded.desktop <<'EOF'
+cat > "$AUTOSTART/plank-reloaded.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Plank
 Exec=plank
 OnlyShowIn=XFCE;
 EOF
+$SUDO chown "$TARGET_USER:$TARGET_USER" "$AUTOSTART/plank-reloaded.desktop"
+$SUDO chmod 0644 "$AUTOSTART/plank-reloaded.desktop"
 
-$SUDO install -o "$TARGET_USER" -g "$TARGET_USER" -m 0644 \
-  /tmp/plank-reloaded.desktop "$AUTOSTART/plank-reloaded.desktop"
-rm -f /tmp/plank-reloaded.desktop
-
+run_as_user "$TARGET_USER" test -s "$AUTOSTART/restart-openclaw-gateway.desktop" || err "restart-openclaw-gateway.desktop is empty"
 run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "plank autostart desktop file is empty at finish"
 
 $SUDO systemctl disable --now lightdm
