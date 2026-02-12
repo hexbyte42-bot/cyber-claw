@@ -40,15 +40,11 @@ run_in_xrdp_session() {
   run_as_user "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
 }
 
-# Optional flags (for CI / automation)
-APT_QUIET="${APT_QUIET:-0}"
+# Optional flags
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --apt-quiet)
-      APT_QUIET=1
-      ;;
     -h|--help)
-      echo "Usage: $0 [--apt-quiet]"
+      echo "Usage: $0"
       exit 0
       ;;
     *)
@@ -83,18 +79,8 @@ run_as_user() {
 log "Target user: $TARGET_USER"
 log "Target HOME: $TARGET_HOME"
 
-log "APT quiet mode: $APT_QUIET"
-
 apt_run() {
-  if [[ "$APT_QUIET" == "1" ]]; then
-    if [[ -n "$SUDO" ]]; then
-      $SUDO env DEBIAN_FRONTEND=noninteractive apt-get -q "$@" >/dev/null 2>&1
-    else
-      DEBIAN_FRONTEND=noninteractive apt-get -q "$@" >/dev/null 2>&1
-    fi
-  else
-    $SUDO apt-get "$@"
-  fi
+  $SUDO apt-get "$@"
 }
 
 log "apt-get update"

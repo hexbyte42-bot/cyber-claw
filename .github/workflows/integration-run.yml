@@ -125,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x install-xfce-xrdp-on-debian.sh
-          sudo bash ./install-xfce-xrdp-on-debian.sh --apt-quiet
+          sudo bash ./install-xfce-xrdp-on-debian.sh
 
   shutdown-vm:
     if: ${{ always() }}
