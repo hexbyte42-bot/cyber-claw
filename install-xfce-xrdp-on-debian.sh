@@ -50,11 +50,14 @@ ensure_session_context() {
   fi
 
   # First, try to reuse an existing graphical session context (physical or XRDP).
+  log "Detecting existing graphical session context (DISPLAY + DBUS)..."
   if find_session_context; then
+    log "Found existing session context: DISPLAY=$SESSION_DISPLAY"
     return 0
   fi
 
   # If no session context exists, start XRDP session then detect its context.
+  log "No session context found. Starting XRDP session and re-detecting context..."
   out="$(run_as_user "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
   disp="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
   if [[ -n "${disp:-}" ]]; then
@@ -62,6 +65,7 @@ ensure_session_context() {
   fi
 
   if find_session_context; then
+    log "XRDP session context ready: DISPLAY=$SESSION_DISPLAY"
     return 0
   fi
 
