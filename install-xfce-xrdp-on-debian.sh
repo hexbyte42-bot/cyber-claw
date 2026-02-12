@@ -166,6 +166,7 @@ apt_run install -y \
   fonts-noto fonts-noto-cjk fonts-noto-color-emoji
 
 $SUDO systemctl enable --now xrdp
+$SUDO systemctl disable --now lightdm
 
 # -------------------------
 # fcitx5 + Chinese addons
@@ -330,8 +331,6 @@ $SUDO chmod 0644 "$AUTOSTART/plank-reloaded.desktop"
 
 run_as_user "$TARGET_USER" test -s "$AUTOSTART/restart-openclaw-gateway.desktop" || err "restart-openclaw-gateway.desktop is empty"
 run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "plank autostart desktop file is empty at finish"
-
-$SUDO systemctl disable --now lightdm
 
 if xrdp-sesadmin -c list 2>/dev/null | grep -q "User: $TARGET_USER"; then
   log "Logging out current desktop session(s) for $TARGET_USER"
