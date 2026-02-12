@@ -127,6 +127,20 @@ jobs:
           chmod +x install-xfce-xrdp-on-debian.sh
           sudo bash ./install-xfce-xrdp-on-debian.sh --quiet
 
+      - name: Verify XFCE autostart desktop files
+        run: |
+          set -euo pipefail
+          for f in \
+            /home/river/.config/autostart/restart-openclaw-gateway.desktop \
+            /home/river/.config/autostart/plank-reloaded.desktop
+          do
+            echo "==> checking $f"
+            sudo ls -l "$f"
+            sudo wc -c "$f"
+            sudo sed -n '1,30p' "$f"
+            sudo test -s "$f"
+          done
+
   shutdown-vm:
     if: ${{ always() }}
     needs: [reset-vm, run-script]
