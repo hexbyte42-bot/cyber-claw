@@ -41,7 +41,7 @@ run_in_xrdp_session() {
 }
 
 # Optional flags
-while [[ $# -gt 0 ]]; do
+if [[ $# -gt 0 ]]; then
   case "$1" in
     -h|--help)
       echo "Usage: $0"
@@ -51,8 +51,7 @@ while [[ $# -gt 0 ]]; do
       err "Unknown argument: $1"
       ;;
   esac
-  shift
-done
+fi
 
 # Target user (the one whose ~/.config will be written)
 TARGET_USER="${SUDO_USER:-$(id -un)}"
