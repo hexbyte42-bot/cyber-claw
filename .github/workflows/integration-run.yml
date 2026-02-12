@@ -170,6 +170,11 @@ jobs:
             sudo -u "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
           }
 
+          echo "appmenu values before screenshot:"
+          run_in_xrdp_session xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+          run_in_xrdp_session xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+          run_in_xrdp_session xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
+
           mkdir -p assets
           rm -f assets/screenshot.png
 
