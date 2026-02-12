@@ -259,6 +259,10 @@ set_string xfce4-panel /plugins/plugin-2 appmenu
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/bold-application-name true
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode          false
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/expand                false
+
+# 4) apply panel/dock changes now
+xfce4-panel -r || true
+plank >/dev/null 2>&1 &
 '
 # -------------------------
 # openclaw-gateway + xrdp session binding
