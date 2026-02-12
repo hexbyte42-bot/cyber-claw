@@ -331,10 +331,14 @@ run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "p
 
 $SUDO systemctl disable --now lightdm
 
-log "Logging out current desktop session(s) for $TARGET_USER"
-sid="$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$TARGET_USER" '$3==u {print $1; exit}')"
-if [[ -n "${sid:-}" ]]; then
-  loginctl terminate-session "$sid" || true
+if xrdp-sesadmin -c list 2>/dev/null | grep -q "User: $TARGET_USER"; then
+  log "Logging out current desktop session(s) for $TARGET_USER"
+  sid="$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$TARGET_USER" '$3==u {print $1; exit}')"
+  if [[ -n "${sid:-}" ]]; then
+    loginctl terminate-session "$sid" || true
+  fi
+else
+  warn "No XRDP session found for $TARGET_USER; skip logout step."
 fi
 
 warn "Setup finished. Please connect again via your XRDP client / remote desktop tool to enter the configured XFCE session."
