@@ -267,20 +267,17 @@ set_int_array() {
   xfconf-query "${args[@]}"
 }
 
-set_string(){ xfconf-query --create -c "$1" -p "$2" -t string -s "$3"; }
-set_bool(){   xfconf-query --create -c "$1" -p "$2" -t bool   -s "$3"; }
-
 # 1) delete panel-2 by keeping only panel-1
 set_int_array xfce4-panel /panels 1
 
 # 2) force plugin-2 to be appmenu (NOTE: your system stores type at /plugins/plugin-2)
-set_string xfce4-panel /plugins/plugin-2 appmenu
+xfconf-query --create -c xfce4-panel -p /plugins/plugin-2 -t string -s appmenu
 xfce4-panel -r || true
 
 # 3) appmenu settings
-set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/bold-application-name true
-set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode false
-set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/expand false
+xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name -t bool -s true
+xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode -t bool -s false
+xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
 xfce4-panel -r || true
 
 # 4) apply dock changes now
