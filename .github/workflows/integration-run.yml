@@ -11,7 +11,7 @@ on:
       - "install-xfce-xrdp-on-debian.sh"
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
@@ -139,6 +139,54 @@ jobs:
             sudo sed -n '1,30p' "$f"
             sudo test -s "$f"
           done
+
+      - name: Capture XFCE screenshot to assets/screenshot.png
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          TARGET_USER: river
+        run: |
+          set -euo pipefail
+
+          get_display() {
+            sudo -u "$TARGET_USER" xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
+              $1=="Display:" {d=$2}
+              $1=="User:" && $2==u {print d; exit}
+            '
+          }
+
+          DISPLAY_NUM="$(get_display || true)"
+          if [ -z "${DISPLAY_NUM:-}" ]; then
+            out="$(sudo -u "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
+            DISPLAY_NUM="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
+          fi
+
+          [ -n "${DISPLAY_NUM:-}" ] || { echo "No XRDP display found"; exit 1; }
+
+          mkdir -p assets
+          if command -v xfce4-screenshooter >/dev/null 2>&1; then
+            sudo -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" xfce4-screenshooter -f -s "$PWD/assets/screenshot.png"
+          elif command -v import >/dev/null 2>&1; then
+            sudo -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" import -window root "$PWD/assets/screenshot.png"
+          else
+            echo "No screenshot tool available"
+            exit 1
+          fi
+
+          test -s assets/screenshot.png
+
+      - name: Commit screenshot update
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- assets/screenshot.png; then
+            echo "No screenshot change detected"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/screenshot.png
+          git commit -m "docs: refresh XFCE screenshot"
+          git push
 
   shutdown-vm:
     if: ${{ always() }}
