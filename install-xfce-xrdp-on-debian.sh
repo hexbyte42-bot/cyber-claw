@@ -332,7 +332,7 @@ $SUDO chmod 0644 "$AUTOSTART/plank-reloaded.desktop"
 run_as_user "$TARGET_USER" test -s "$AUTOSTART/restart-openclaw-gateway.desktop" || err "restart-openclaw-gateway.desktop is empty"
 run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "plank autostart desktop file is empty at finish"
 
-if xrdp-sesadmin -c list 2>/dev/null | grep -q "User: $TARGET_USER"; then
+if xrdp-sesadmin -c list 2>/dev/null | awk -v u="$TARGET_USER" '$1=="User:" && $2==u {found=1} END{exit(found?0:1)}'; then
   log "Logging out current desktop session(s) for $TARGET_USER"
   sid="$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$TARGET_USER" '$3==u {print $1; exit}')"
   if [[ -n "${sid:-}" ]]; then
