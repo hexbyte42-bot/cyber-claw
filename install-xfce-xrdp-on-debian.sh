@@ -234,8 +234,13 @@ set_string xfce4-panel /plugins/plugin-2 appmenu
 # 3) appmenu settings
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/bold-application-name true
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode          false
-'
 
+# 4) apply desktop changes now
+pkill -x xfce4-panel 2>/dev/null || true
+nohup xfce4-panel >/dev/null 2>&1 &
+pkill -x plank 2>/dev/null || true
+nohup plank >/dev/null 2>&1 &
+'
 # -------------------------
 # openclaw-gateway + xrdp session binding
 # -------------------------
