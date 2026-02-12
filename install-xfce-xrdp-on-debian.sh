@@ -279,6 +279,11 @@ xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compa
 xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
 xfce4-panel -r || true
 
+echo "appmenu readback after panel restart:"
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
+
 # 4) apply dock changes now
 plank >/dev/null 2>&1 &
 '
