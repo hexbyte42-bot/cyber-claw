@@ -286,6 +286,28 @@ xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-applicati
 xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
 xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
 
+sleep 2
+echo "appmenu readback +2s:"
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
+
+sleep 3
+echo "appmenu readback +5s:"
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+expand_now="$(xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true)"
+echo "$expand_now"
+if [[ "$expand_now" != "false" ]]; then
+  echo "expand drift detected, applying final override to false"
+  xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
+fi
+
+echo "appmenu final readback:"
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
+
 # 4) apply dock changes now
 plank >/dev/null 2>&1 &
 '
