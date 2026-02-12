@@ -178,6 +178,10 @@ jobs:
         if: ${{ github.event_name != 'pull_request' }}
         run: |
           set -euo pipefail
+          if ! command -v git >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y git
+          fi
           if git diff --quiet -- assets/screenshot.png; then
             echo "No screenshot change detected"
             exit 0
