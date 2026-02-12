@@ -126,6 +126,7 @@ jobs:
           set -euo pipefail
           chmod +x install-xfce-xrdp-on-debian.sh
           sudo bash ./install-xfce-xrdp-on-debian.sh --quiet
+          sudo sync
 
       - name: Verify XFCE autostart desktop files
         run: |
@@ -180,10 +181,29 @@ jobs:
             [ "$exitstatus" = "OK" ]
           }
 
-          echo "Stopping VM ${PVE_VMID} after test..."
-          stop_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/stop" | extract_upid || true)"
-          if [ -n "${stop_upid:-}" ]; then
-            wait_upid "$stop_upid" || true
+          echo "Shutting down VM ${PVE_VMID} gracefully after test..."
+          shutdown_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/shutdown" | extract_upid || true)"
+          if [ -n "${shutdown_upid:-}" ]; then
+            wait_upid "$shutdown_upid" || true
+          fi
+
+          vm_status=""
+          for i in {1..24}; do
+            status_json="$(curl -sk -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/current")"
+            vm_status="$(echo "$status_json" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')"
+            echo "Post-test shutdown check #$i: ${vm_status:-unknown}"
+            if [ "$vm_status" = "stopped" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "${vm_status:-}" != "stopped" ]; then
+            echo "Graceful shutdown did not finish in time, forcing stop..."
+            stop_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/stop" | extract_upid || true)"
+            if [ -n "${stop_upid:-}" ]; then
+              wait_upid "$stop_upid" || true
+            fi
           fi
 
           echo "Shutdown step completed."
