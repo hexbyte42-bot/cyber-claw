@@ -31,13 +31,37 @@ ensure_xrdp_display() {
 
   echo "$disp"
 }
+find_dbus_for_display() {
+  local disp="$1" uid p env_display env_bus
+  uid="$(id -u "$TARGET_USER")"
+
+  for p in $(pgrep -u "$uid" -f 'xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
+    [[ -r "/proc/$p/environ" ]] || continue
+    env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
+    [[ "$env_display" == "$disp" ]] || continue
+
+    env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
+    if [[ -n "$env_bus" ]]; then
+      echo "$env_bus"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 run_in_xrdp_session() {
-  local disp
+  local disp bus
   disp="$(ensure_xrdp_display)"
+  bus="$(find_dbus_for_display "$disp" || true)"
   log "Using DISPLAY=$disp for xfconf/xfce4-panel operations"
 
-  # dbus-run-session gives a private session bus so xfconf doesn't need autolaunch
-  run_as_user "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
+  if [[ -n "${bus:-}" ]]; then
+    run_as_user "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" "$@"
+  else
+    warn "No matching DBUS_SESSION_BUS_ADDRESS found for DISPLAY=$disp; falling back to dbus-run-session"
+    run_as_user "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
+  fi
 }
 
 # Optional flags
