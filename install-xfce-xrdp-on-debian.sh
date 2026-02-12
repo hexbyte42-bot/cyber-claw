@@ -234,12 +234,6 @@ set_string xfce4-panel /plugins/plugin-2 appmenu
 # 3) appmenu settings
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/bold-application-name true
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode          false
-
-# 4) apply desktop changes now
-pkill -x xfce4-panel 2>/dev/null || true
-nohup xfce4-panel >/dev/null 2>&1 &
-pkill -x plank 2>/dev/null || true
-nohup plank >/dev/null 2>&1 &
 '
 # -------------------------
 # openclaw-gateway + xrdp session binding
@@ -287,30 +281,8 @@ run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "p
 
 $SUDO systemctl disable --now lightdm
 
-# -------------------------
-# Finish: hand back to user
-# -------------------------
-warn "System is ready. Final step (OpenClaw install) is manual:"
-cat <<'EOF'
+log "Logging out current XRDP session(s) for $TARGET_USER"
+run_as_user "$TARGET_USER" pkill -KILL -f xfce4-session 2>/dev/null || true
+run_as_user "$TARGET_USER" pkill -KILL -f xrdp-chansrv 2>/dev/null || true
 
-============================================================
-curl -fsSL https://openclaw.ai/install.sh | bash
-============================================================
-
-EOF
-
-if [[ -t 0 ]]; then
-  read -r -p "Reboot now to apply all changes? [y/N]: " reboot_ans
-  case "${reboot_ans,,}" in
-    y|yes)
-      log "Rebooting system now..."
-      $SUDO reboot
-      ;;
-    *)
-      warn "Reboot skipped. Please reboot manually when convenient."
-      ;;
-  esac
-else
-  warn "Non-interactive shell detected; skipping reboot prompt."
-  warn "Please reboot manually to apply all changes."
-fi
+warn "Setup finished. Please connect again via your XRDP client / remote desktop tool to enter the configured XFCE session."

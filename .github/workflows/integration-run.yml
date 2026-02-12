@@ -162,13 +162,13 @@ jobs:
             '
           }
 
-          DISPLAY_NUM="$(get_display || true)"
+          out="$(sudo -u "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
+          DISPLAY_NUM="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
           if [ -z "${DISPLAY_NUM:-}" ]; then
-            out="$(sudo -u "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
-            DISPLAY_NUM="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
+            DISPLAY_NUM="$(get_display || true)"
           fi
 
-          [ -n "${DISPLAY_NUM:-}" ] || { echo "No XRDP display found"; exit 1; }
+          [ -n "${DISPLAY_NUM:-}" ] || { echo "No XRDP display found after starting session"; exit 1; }
 
           mkdir -p assets
           if command -v xfce4-screenshooter >/dev/null 2>&1; then
