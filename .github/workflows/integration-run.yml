@@ -77,12 +77,10 @@ jobs:
             [ "$exitstatus" = "OK" ]
           }
 
-          echo "Stopping VM ${PVE_VMID}..."
-          stop_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/stop" | extract_upid || true)"
-          if [ -n "${stop_upid:-}" ]; then
-            wait_upid "$stop_upid" || true
-            echo "VM stop completed; waiting 30 seconds before rollback..."
-            sleep 30
+          echo "Shutting down VM ${PVE_VMID} before rollback..."
+          shutdown_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/shutdown" | extract_upid || true)"
+          if [ -n "${shutdown_upid:-}" ]; then
+            wait_upid "$shutdown_upid" || true
           fi
 
           echo "Rolling back snapshot ${PVE_SNAPSHOT}..."
@@ -207,5 +205,3 @@ jobs:
           fi
 
           echo "Shutdown step completed."
-          echo "Waiting 30 seconds to avoid overlap with next run..."
-          sleep 30
