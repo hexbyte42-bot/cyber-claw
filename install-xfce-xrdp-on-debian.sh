@@ -278,8 +278,8 @@ set_string xfce4-panel /plugins/plugin-2 appmenu
 
 # 3) appmenu settings
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/bold-application-name true
-set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode          false
-set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/expand                false
+set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode false
+set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/expand false
 
 # 4) apply panel/dock changes now
 xfce4-panel -r || true
