@@ -41,10 +41,14 @@ run_in_xrdp_session() {
 }
 
 # Optional flags
+APT_QUIET=0
 if [[ $# -gt 0 ]]; then
   case "$1" in
+    --quiet)
+      APT_QUIET=1
+      ;;
     -h|--help)
-      echo "Usage: $0"
+      echo "Usage: $0 [--quiet]"
       exit 0
       ;;
     *)
@@ -79,7 +83,23 @@ log "Target user: $TARGET_USER"
 log "Target HOME: $TARGET_HOME"
 
 apt_run() {
-  $SUDO apt-get "$@"
+  if [[ "$APT_QUIET" == "1" ]]; then
+    if [[ -n "$SUDO" ]]; then
+      $SUDO env DEBIAN_FRONTEND=noninteractive \
+        apt-get -q -y \
+          -o Dpkg::Use-Pty=0 \
+          -o Dpkg::Progress-Fancy=0 \
+          "$@"
+    else
+      DEBIAN_FRONTEND=noninteractive \
+        apt-get -q -y \
+          -o Dpkg::Use-Pty=0 \
+          -o Dpkg::Progress-Fancy=0 \
+          "$@"
+    fi
+  else
+    $SUDO apt-get "$@"
+  fi
 }
 
 log "apt-get update"
