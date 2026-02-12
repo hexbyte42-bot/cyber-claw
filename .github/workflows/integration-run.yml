@@ -171,3 +171,5 @@ jobs:
           fi
 
           echo "Shutdown step completed."
+          echo "Waiting 30 seconds to avoid overlap with next run..."
+          sleep 30
