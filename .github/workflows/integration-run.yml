@@ -6,9 +6,11 @@ on:
     branches: ["**"]
     paths:
       - "install-xfce-xrdp-on-debian.sh"
+      - ".github/workflows/**"
   pull_request:
     paths:
       - "install-xfce-xrdp-on-debian.sh"
+      - ".github/workflows/**"
 
 permissions:
   contents: write
@@ -155,102 +157,60 @@ jobs:
         run: |
           set -euo pipefail
 
-          SESSION_DISPLAY=""
-          SESSION_DBUS=""
+          echo "Detecting session context (DISPLAY + DBUS)..."
+          uid="$(id -u "$TARGET_USER")"
+          SESSION_DISPLAY="$(xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
+            $1=="Display:" {d=$2}
+            $1=="User:" && $2==u {last=d}
+            END {print last}
+          ')"
 
-          latest_xrdp_display() {
-            xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
+          if [ -z "${SESSION_DISPLAY:-}" ]; then
+            echo "No XRDP session found. Starting xrdp-sesrun..."
+            out="$(sudo -u "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
+            echo "$out"
+            SESSION_DISPLAY="$(xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
               $1=="Display:" {d=$2}
               $1=="User:" && $2==u {last=d}
               END {print last}
-            '
-          }
+            ')"
+          fi
 
-          find_session_context() {
-            local uid p env_display env_bus bus_path
-            uid="$(id -u "$TARGET_USER")"
+          [ -n "${SESSION_DISPLAY:-}" ] || { echo "Cannot determine session DISPLAY for $TARGET_USER"; exit 1; }
 
-            bus_path="/run/user/${uid}/bus"
-            if [ -S "$bus_path" ]; then
-              SESSION_DBUS="unix:path=$bus_path"
-            fi
+          SESSION_DBUS=""
+          if [ -S "/run/user/${uid}/bus" ]; then
+            SESSION_DBUS="unix:path=/run/user/${uid}/bus"
+          fi
+          if [ -z "${SESSION_DBUS:-}" ]; then
+            for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
+              [ -r "/proc/$p/environ" ] || continue
+              env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
+              [ -n "${env_bus:-}" ] || continue
+              SESSION_DBUS="$env_bus"
+              break
+            done
+          fi
 
-            SESSION_DISPLAY="$(latest_xrdp_display)"
+          [ -n "${SESSION_DBUS:-}" ] || { echo "Cannot determine DBUS session address for $TARGET_USER"; exit 1; }
 
-            if [ -z "${SESSION_DISPLAY:-}" ]; then
-              for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel|Xorg|Xwayland' 2>/dev/null || true); do
-                [ -r "/proc/$p/environ" ] || continue
-                env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
-                [ -n "${env_display:-}" ] || continue
-                SESSION_DISPLAY="$env_display"
-                break
-              done
-            fi
-
-            if [ -z "${SESSION_DBUS:-}" ]; then
-              for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
-                [ -r "/proc/$p/environ" ] || continue
-                env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
-                [ -n "${env_bus:-}" ] || continue
-                SESSION_DBUS="$env_bus"
-                break
-              done
-            fi
-
-            [ -n "${SESSION_DISPLAY:-}" ] && [ -n "${SESSION_DBUS:-}" ]
-          }
-
-          ensure_session_context() {
-            local out disp
-
-            if [ -n "${SESSION_DISPLAY:-}" ] && [ -n "${SESSION_DBUS:-}" ]; then
-              return 0
-            fi
-
-            echo "Detecting existing graphical session context (DISPLAY + DBUS)..."
-            if find_session_context; then
-              echo "Found existing session context: DISPLAY=$SESSION_DISPLAY"
-              return 0
-            fi
-
-            echo "No session context found. Starting XRDP session and re-detecting context..."
-            out="$(sudo -u "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
-            echo "$out"
-            disp="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
-            if [ -n "${disp:-}" ]; then
-              SESSION_DISPLAY="$disp"
-            fi
-
-            if find_session_context; then
-              echo "XRDP session context ready: DISPLAY=$SESSION_DISPLAY"
-              return 0
-            fi
-
-            echo "Cannot determine graphical session context for $TARGET_USER"
-            return 1
-          }
-
-          run_in_session_context() {
-            ensure_session_context
-            echo "XRDP session list:"
-            xrdp-sesadmin -c list 2>/dev/null || true
-            echo "Using DISPLAY=$SESSION_DISPLAY"
-            echo "Using DBUS_SESSION_BUS_ADDRESS=$SESSION_DBUS"
-            sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" "$@"
-          }
+          echo "XRDP session list:"
+          xrdp-sesadmin -c list 2>/dev/null || true
+          echo "Using DISPLAY=$SESSION_DISPLAY"
+          echo "Using DBUS_SESSION_BUS_ADDRESS=$SESSION_DBUS"
 
           echo "appmenu values before screenshot:"
-          run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
-          run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
-          run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
+          sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+          sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+          sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
 
           mkdir -p assets
           rm -f assets/screenshot.png
 
           if command -v xfce4-screenshooter >/dev/null 2>&1; then
-            run_in_session_context bash -lc "xfce4-screenshooter -f -s '$PWD/assets/screenshot.png'"
+            sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" bash -lc "xfce4-screenshooter -f -s '$PWD/assets/screenshot.png'"
           elif command -v import >/dev/null 2>&1; then
-            run_in_session_context bash -lc "import -window root '$PWD/assets/screenshot.png'"
+            sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" bash -lc "import -window root '$PWD/assets/screenshot.png'"
           else
             echo "No screenshot tool available"
             exit 1
