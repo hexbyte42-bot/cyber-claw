@@ -208,9 +208,9 @@ jobs:
           rm -f assets/screenshot.png
 
           if command -v xfce4-screenshooter >/dev/null 2>&1; then
-            sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" bash -lc "xfce4-screenshooter -f -s '$PWD/assets/screenshot.png'"
+            sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" xfce4-screenshooter -f -s "$PWD/assets/screenshot.png"
           elif command -v import >/dev/null 2>&1; then
-            sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" bash -lc "import -window root '$PWD/assets/screenshot.png'"
+            sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" import -window root "$PWD/assets/screenshot.png"
           else
             echo "No screenshot tool available"
             exit 1
