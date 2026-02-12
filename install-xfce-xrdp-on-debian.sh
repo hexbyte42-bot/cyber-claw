@@ -282,6 +282,6 @@ run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "p
 $SUDO systemctl disable --now lightdm
 
 log "Logging out current XRDP session(s) for $TARGET_USER"
-run_in_xrdp_session bash -lc 'xfce4-session-logout --logout' || true
+run_in_xrdp_session bash -lc 'timeout 8s xfce4-session-logout --logout --fast || true'
 
 warn "Setup finished. Please connect again via your XRDP client / remote desktop tool to enter the configured XFCE session."
