@@ -24,6 +24,17 @@ This repository contains a single script that prepares a Debian machine with XFC
 
 After that, you can use ***Windows Remote Desktop*** or ***Windows App for Mac*** to connect your VM with IP address.
 
+## How to Use (after installation)
+
+1. Reboot the VM once after the script finishes.
+2. Open your RDP client (Windows Remote Desktop / Windows App for Mac).
+3. Connect to `<VM-IP>:3389` with your Linux username/password.
+4. After login, use the XFCE desktop as your main OpenClaw runtime context.
+
+What is supported in remote desktop use:
+- Clipboard sharing between local machine and remote XFCE session
+- File transfer between local and remote machine (client-dependent; supported by Windows Remote Desktop / Windows App for Mac)
+
 ### Plank (dock) usage tip
 
 This setup uses `plank-reloaded` as the dock. To open its settings menu, hold **Ctrl** and click on the dock.

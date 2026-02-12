@@ -22,6 +22,17 @@ curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-
 
 完成后，你可以使用 ***Windows 远程桌面*** 或 ***Windows App for Mac***，通过 IP 地址连接到你的虚拟机。
 
+## 安装后如何使用
+
+1. 脚本执行完成后，先重启一次 VM。
+2. 打开 RDP 客户端（Windows 远程桌面 / Windows App for Mac）。
+3. 使用 `<VM-IP>:3389`，输入 Linux 用户名和密码登录。
+4. 登录后，在 XFCE 桌面中使用 OpenClaw（推荐运行上下文）。
+
+远程桌面使用能力说明：
+- 支持本地与远程 XFCE 会话之间共享剪贴板
+- 支持本地与远程机器之间传输文件（取决于客户端；Windows 远程桌面 / Windows App for Mac 支持）
+
 ### Plank（dock）使用提示
 
 本配置使用 `plank-reloaded` 作为 dock。需要打开它的配置菜单时，在 dock 上**按住 Ctrl 再点击**即可弹出。
