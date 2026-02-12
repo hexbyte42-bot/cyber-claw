@@ -272,7 +272,6 @@ set_int_array xfce4-panel /panels 1
 
 # 2) force plugin-2 to be appmenu (NOTE: your system stores type at /plugins/plugin-2)
 xfconf-query --create -c xfce4-panel -p /plugins/plugin-2 -t string -s appmenu
-xfce4-panel -r || true
 
 # 3) appmenu settings
 xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name -t bool -s true
