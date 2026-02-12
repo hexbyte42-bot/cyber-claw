@@ -8,17 +8,23 @@ set -euo pipefail
 log() { printf "\n\033[1;32m[+] %s\033[0m\n" "$*"; }
 warn() { printf "\n\033[1;33m[!] %s\033[0m\n" "$*"; }
 err() { printf "\n\033[1;31m[✗] %s\033[0m\n" "$*"; exit 1; }
+XRDP_DISPLAY=""
 ensure_xrdp_display() {
   local disp out
 
-  # Try to find an existing session first (Display: :10 appears right above User: xxx)
+  if [[ -n "${XRDP_DISPLAY:-}" ]]; then
+    echo "$XRDP_DISPLAY"
+    return 0
+  fi
+
+  # Prefer the latest session display for this user.
   disp="$(run_as_user "$TARGET_USER" xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
     $1=="Display:" {d=$2}
-    $1=="User:" && $2==u {print d; exit}
+    $1=="User:" && $2==u {last=d}
+    END {print last}
   ')"
 
   if [[ -z "${disp:-}" ]]; then
-    # No session found: start one and parse display=:xx from the output
     out="$(run_as_user "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
     disp="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
   fi
@@ -29,7 +35,8 @@ ensure_xrdp_display() {
     return 1
   fi
 
-  echo "$disp"
+  XRDP_DISPLAY="$disp"
+  echo "$XRDP_DISPLAY"
 }
 find_dbus_for_display() {
   local disp="$1" uid p env_display env_bus
@@ -56,12 +63,11 @@ run_in_xrdp_session() {
   bus="$(find_dbus_for_display "$disp" || true)"
   log "Using DISPLAY=$disp for xfconf/xfce4-panel operations"
 
-  if [[ -n "${bus:-}" ]]; then
-    run_as_user "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" "$@"
-  else
-    warn "No matching DBUS_SESSION_BUS_ADDRESS found for DISPLAY=$disp; falling back to dbus-run-session"
-    run_as_user "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
+  if [[ -z "${bus:-}" ]]; then
+    err "No matching DBUS_SESSION_BUS_ADDRESS found for DISPLAY=$disp"
   fi
+
+  run_as_user "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" "$@"
 }
 
 # Optional flags
