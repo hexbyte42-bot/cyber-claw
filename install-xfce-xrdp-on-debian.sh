@@ -282,8 +282,9 @@ run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "p
 $SUDO systemctl disable --now lightdm
 
 log "Logging out current XRDP session(s) for $TARGET_USER"
-if xrdp-sesadmin -c list | grep -q "User: $TARGET_USER"; then
-  sid="$(xrdp-sesadmin -c list | awk -v u="$TARGET_USER" '
+session_list="$(xrdp-sesadmin -c list 2>/dev/null || true)"
+if echo "$session_list" | grep -q "User: $TARGET_USER"; then
+  sid="$(echo "$session_list" | awk -v u="$TARGET_USER" '
     $1=="Session" && $2=="ID:" {sid=$3}
     $1=="User:" && $2==u {print sid; exit}
   ')"
