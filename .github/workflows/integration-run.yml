@@ -158,30 +158,59 @@ jobs:
           get_display() {
             xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
               $1=="Display:" {d=$2}
-              $1=="User:" && $2==u {print d; exit}
+              $1=="User:" && $2==u {last=d}
+              END {print last}
             '
           }
 
-          run_in_xrdp_session() {
-            local disp
-            disp="$(get_display)"
-            [ -n "${disp:-}" ] || { echo "No active XRDP session for $TARGET_USER"; exit 1; }
-            echo "Using DISPLAY=$disp"
-            sudo -u "$TARGET_USER" env DISPLAY="$disp" dbus-run-session -- "$@"
+          get_dbus_for_display() {
+            local disp="$1" uid p env_display env_bus
+            uid="$(id -u "$TARGET_USER")"
+
+            if [ -S "/run/user/${uid}/bus" ]; then
+              echo "unix:path=/run/user/${uid}/bus"
+              return 0
+            fi
+
+            for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
+              [ -r "/proc/$p/environ" ] || continue
+              env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
+              [ "$env_display" = "$disp" ] || continue
+              env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
+              [ -n "${env_bus:-}" ] || continue
+              echo "$env_bus"
+              return 0
+            done
+
+            return 1
+          }
+
+          DISPLAY_NUM="$(get_display || true)"
+          [ -n "${DISPLAY_NUM:-}" ] || { echo "No active XRDP session for $TARGET_USER"; exit 1; }
+          DBUS_ADDR="$(get_dbus_for_display "$DISPLAY_NUM" || true)"
+          [ -n "${DBUS_ADDR:-}" ] || { echo "No DBUS address found for DISPLAY=$DISPLAY_NUM"; exit 1; }
+
+          echo "XRDP session list:"
+          xrdp-sesadmin -c list 2>/dev/null || true
+          echo "Using DISPLAY=$DISPLAY_NUM"
+          echo "Using DBUS_SESSION_BUS_ADDRESS=$DBUS_ADDR"
+
+          run_in_session_context() {
+            sudo -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" DBUS_SESSION_BUS_ADDRESS="$DBUS_ADDR" "$@"
           }
 
           echo "appmenu values before screenshot:"
-          run_in_xrdp_session xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
-          run_in_xrdp_session xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
-          run_in_xrdp_session xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
+          run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+          run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+          run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
 
           mkdir -p assets
           rm -f assets/screenshot.png
 
           if command -v xfce4-screenshooter >/dev/null 2>&1; then
-            run_in_xrdp_session bash -lc "xfce4-screenshooter -f -s '$PWD/assets/screenshot.png'"
+            run_in_session_context bash -lc "xfce4-screenshooter -f -s '$PWD/assets/screenshot.png'"
           elif command -v import >/dev/null 2>&1; then
-            run_in_xrdp_session bash -lc "import -window root '$PWD/assets/screenshot.png'"
+            run_in_session_context bash -lc "import -window root '$PWD/assets/screenshot.png'"
           else
             echo "No screenshot tool available"
             exit 1
