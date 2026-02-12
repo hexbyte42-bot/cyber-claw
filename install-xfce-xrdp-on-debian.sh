@@ -93,7 +93,11 @@ log "APT quiet mode: $APT_QUIET"
 
 apt_run() {
   if [[ "$APT_QUIET" == "1" ]]; then
-    $SUDO DEBIAN_FRONTEND=noninteractive "${APT_CMD[@]}" "$@"
+    if [[ -n "$SUDO" ]]; then
+      $SUDO env DEBIAN_FRONTEND=noninteractive "${APT_CMD[@]}" "$@"
+    else
+      DEBIAN_FRONTEND=noninteractive "${APT_CMD[@]}" "$@"
+    fi
   else
     $SUDO "${APT_CMD[@]}" "$@"
   fi
