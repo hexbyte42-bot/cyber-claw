@@ -11,6 +11,14 @@ err() { printf "\n\033[1;31m[✗] %s\033[0m\n" "$*"; exit 1; }
 SESSION_DISPLAY=""
 SESSION_DBUS=""
 
+latest_xrdp_display() {
+  run_as_user "$TARGET_USER" xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
+    $1=="Display:" {d=$2}
+    $1=="User:" && $2==u {last=d}
+    END {print last}
+  '
+}
+
 find_session_context() {
   local uid p env_display env_bus bus_path
   uid="$(id -u "$TARGET_USER")"
@@ -22,11 +30,7 @@ find_session_context() {
   fi
 
   # Prefer XRDP display when available for this target user.
-  SESSION_DISPLAY="$(run_as_user "$TARGET_USER" xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
-    $1=="Display:" {d=$2}
-    $1=="User:" && $2==u {last=d}
-    END {print last}
-  ')"
+  SESSION_DISPLAY="$(latest_xrdp_display)"
 
   # Fallback: sniff any DISPLAY from user's session-related processes.
   if [[ -z "${SESSION_DISPLAY:-}" ]]; then
@@ -322,7 +326,7 @@ run_as_user "$TARGET_USER" mkdir -p "$OVR_DIR"
 
 cat > /tmp/10-xrdp.conf <<EOF
 [Service]
-ExecStartPre=/usr/bin/bash -c "xrdp-sesadmin -c=list | grep -Eq '^[[:space:]]*User:[[:space:]]*$TARGET_USER\$' || xrdp-sesrun"
+ExecStartPre=/usr/bin/bash -c "xrdp-sesadmin -c=list 2>/dev/null | awk -v u='$TARGET_USER' '\$1==\"Display:\" {d=\$2} \$1==\"User:\" && \$2==u {last=d} END {if (last!="") exit 0; exit 1}' || xrdp-sesrun"
 EOF
 
 $SUDO install -o "$TARGET_USER" -g "$TARGET_USER" -m 0644 \
@@ -337,7 +341,7 @@ cat > "$AUTOSTART/restart-openclaw-gateway.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Restart OpenClaw Gateway
-Exec=/usr/bin/bash -lc "xrdp-sesadmin -c=list | grep -Eq '^[[:space:]]*User:[[:space:]]*$TARGET_USER\$' && openclaw gateway restart || true"
+Exec=/usr/bin/bash -lc "xrdp-sesadmin -c=list 2>/dev/null | awk -v u='$TARGET_USER' '\$1==\"Display:\" {d=\$2} \$1==\"User:\" && \$2==u {last=d} END {if (last!="") exit 0; exit 1}' && openclaw gateway restart || true"
 X-GNOME-Autostart-enabled=true
 EOF
 $SUDO chown "$TARGET_USER:$TARGET_USER" "$AUTOSTART/restart-openclaw-gateway.desktop"
@@ -356,7 +360,7 @@ $SUDO chmod 0644 "$AUTOSTART/plank-reloaded.desktop"
 run_as_user "$TARGET_USER" test -s "$AUTOSTART/restart-openclaw-gateway.desktop" || err "restart-openclaw-gateway.desktop is empty"
 run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "plank autostart desktop file is empty at finish"
 
-if xrdp-sesadmin -c list 2>/dev/null | awk -v u="$TARGET_USER" '$1=="User:" && $2==u {found=1} END{exit(found?0:1)}'; then
+if [[ -n "$(latest_xrdp_display)" ]]; then
   log "Logging out current desktop session(s) for $TARGET_USER"
   sid="$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$TARGET_USER" '$3==u {print $1; exit}')"
   if [[ -n "${sid:-}" ]]; then
