@@ -220,8 +220,7 @@ OnlyShowIn=XFCE;
 EOF
 }
 
-write_plank_autostart
-run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "plank autostart desktop file is empty"
+# keep final write only
 
 log "Configure XFCE panel (remove panel-2, set appmenu as plugin-2, apply settings)"
 
