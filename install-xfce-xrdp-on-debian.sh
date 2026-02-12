@@ -12,34 +12,45 @@ SESSION_DISPLAY=""
 SESSION_DBUS=""
 
 find_session_context() {
-  local uid p env_display env_bus
+  local uid p env_display env_bus bus_path
   uid="$(id -u "$TARGET_USER")"
 
-  # Prefer dbus-daemon as source of truth for active session bus/display.
-  for p in $(pgrep -u "$uid" -x dbus-daemon 2>/dev/null || true); do
-    [[ -r "/proc/$p/environ" ]] || continue
-    env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
-    env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
-    if [[ -n "${env_display:-}" && -n "${env_bus:-}" ]]; then
-      SESSION_DISPLAY="$env_display"
-      SESSION_DBUS="$env_bus"
-      return 0
-    fi
-  done
+  # User session bus path is usually stable even when XFCE processes are not up yet.
+  bus_path="/run/user/${uid}/bus"
+  if [[ -S "$bus_path" ]]; then
+    SESSION_DBUS="unix:path=$bus_path"
+  fi
 
-  # Fallback to common XFCE processes if dbus-daemon env is incomplete.
-  for p in $(pgrep -u "$uid" -f 'xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
-    [[ -r "/proc/$p/environ" ]] || continue
-    env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
-    env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
-    if [[ -n "${env_display:-}" && -n "${env_bus:-}" ]]; then
-      SESSION_DISPLAY="$env_display"
-      SESSION_DBUS="$env_bus"
-      return 0
-    fi
-  done
+  # Prefer XRDP display when available for this target user.
+  SESSION_DISPLAY="$(run_as_user "$TARGET_USER" xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
+    $1=="Display:" {d=$2}
+    $1=="User:" && $2==u {last=d}
+    END {print last}
+  ')"
 
-  return 1
+  # Fallback: sniff any DISPLAY from user's session-related processes.
+  if [[ -z "${SESSION_DISPLAY:-}" ]]; then
+    for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel|Xorg|Xwayland' 2>/dev/null || true); do
+      [[ -r "/proc/$p/environ" ]] || continue
+      env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
+      [[ -n "${env_display:-}" ]] || continue
+      SESSION_DISPLAY="$env_display"
+      break
+    done
+  fi
+
+  # If bus wasn't from /run/user/<uid>/bus, try extracting from process env.
+  if [[ -z "${SESSION_DBUS:-}" ]]; then
+    for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
+      [[ -r "/proc/$p/environ" ]] || continue
+      env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
+      [[ -n "${env_bus:-}" ]] || continue
+      SESSION_DBUS="$env_bus"
+      break
+    done
+  fi
+
+  [[ -n "${SESSION_DISPLAY:-}" && -n "${SESSION_DBUS:-}" ]]
 }
 
 ensure_session_context() {
