@@ -363,19 +363,20 @@ run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "p
 if [[ -n "$(latest_xrdp_display)" ]]; then
   log "Logging out current desktop session(s) for $TARGET_USER"
 
-  # Prefer XRDP-native session termination (more reliable for xrdp sessions).
-  xrdp_sid="$(xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
-    $1=="Session" && $2=="ID:" {sid=$3}
-    $1=="User:" && $2==u {print sid; exit}
-  ')"
-  if [[ -n "${xrdp_sid:-}" ]]; then
-    xrdp-sesadmin -c kill -s "$xrdp_sid" || true
-  fi
+  # Find loginctl session id that belongs to this user and XRDP display.
+  sid=""
+  for candidate in $(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$TARGET_USER" '$3==u {print $1}'); do
+    display="$(loginctl show-session "$candidate" -p Display --value 2>/dev/null || true)"
+    if [[ "$display" == "$(latest_xrdp_display)" ]]; then
+      sid="$candidate"
+      break
+    fi
+  done
 
-  # Fallback: terminate first loginctl session for this user if still present.
-  sid="$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$TARGET_USER" '$3==u {print $1; exit}')"
   if [[ -n "${sid:-}" ]]; then
     loginctl terminate-session "$sid" || true
+  else
+    warn "No matching loginctl XRDP session found for DISPLAY=$(latest_xrdp_display); skip logout step."
   fi
 else
   warn "No XRDP session found for $TARGET_USER; skip logout step."
