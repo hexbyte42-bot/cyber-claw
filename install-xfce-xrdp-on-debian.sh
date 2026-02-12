@@ -84,19 +84,27 @@ log "Target user: $TARGET_USER"
 log "Target HOME: $TARGET_HOME"
 
 APT_QUIET_ARGS=()
+APT_NONINTERACTIVE_ARGS=()
 if [[ "$APT_QUIET" == "1" ]]; then
   APT_QUIET_ARGS=(-qq)
+  APT_NONINTERACTIVE_ARGS=(
+    -o Dpkg::Use-Pty=0
+    -o Dpkg::Progress-Fancy=0
+    -o APT::Color=0
+    -o Dpkg::Options::=--force-confdef
+    -o Dpkg::Options::=--force-confold
+  )
 fi
 # Use apt-get in scripts for stable CLI behavior.
-APT_CMD=(apt-get "${APT_QUIET_ARGS[@]}")
+APT_CMD=(apt-get "${APT_QUIET_ARGS[@]}" "${APT_NONINTERACTIVE_ARGS[@]}")
 log "APT quiet mode: $APT_QUIET"
 
 apt_run() {
   if [[ "$APT_QUIET" == "1" ]]; then
     if [[ -n "$SUDO" ]]; then
-      $SUDO env DEBIAN_FRONTEND=noninteractive "${APT_CMD[@]}" "$@"
+      $SUDO env DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true "${APT_CMD[@]}" "$@"
     else
-      DEBIAN_FRONTEND=noninteractive "${APT_CMD[@]}" "$@"
+      DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true "${APT_CMD[@]}" "$@"
     fi
   else
     $SUDO "${APT_CMD[@]}" "$@"
