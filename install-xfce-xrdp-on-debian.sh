@@ -210,14 +210,17 @@ apt_run install -y plank-reloaded
 AUTOSTART="$TARGET_HOME/.config/autostart"
 run_as_user "$TARGET_USER" mkdir -p "$AUTOSTART"
 
-run_as_user "$TARGET_USER" bash -lc "cat > '$AUTOSTART/plank-reloaded.desktop' <<'EOF'
+write_plank_autostart() {
+  cat <<'EOF' | run_as_user "$TARGET_USER" tee "$AUTOSTART/plank-reloaded.desktop" >/dev/null
 [Desktop Entry]
 Type=Application
 Name=Plank
 Exec=plank
 OnlyShowIn=XFCE;
-EOF"
+EOF
+}
 
+write_plank_autostart
 run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "plank autostart desktop file is empty"
 
 log "Configure XFCE panel (remove panel-2, set appmenu as plugin-2, apply settings)"
@@ -287,6 +290,10 @@ EOF
 $SUDO install -o "$TARGET_USER" -g "$TARGET_USER" -m 0644 \
   /tmp/restart-openclaw.desktop "$AUTOSTART/restart-openclaw-gateway.desktop"
 rm -f /tmp/restart-openclaw.desktop
+
+# Re-assert plank autostart at the end to avoid unexpected truncation.
+write_plank_autostart
+run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "plank autostart desktop file is empty at finish"
 
 $SUDO systemctl disable --now lightdm
 
