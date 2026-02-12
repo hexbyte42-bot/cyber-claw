@@ -29,7 +29,7 @@ After that, you can use ***Windows Remote Desktop*** or ***Windows App for Mac**
 1. Reboot the VM once after the script finishes.
 2. Open your RDP client (Windows Remote Desktop / Windows App for Mac).
 3. Connect to `<VM-IP>:3389` with your Linux username/password.
-4. After login, use the XFCE desktop as your main OpenClaw runtime context.
+4. After login, use OpenClaw in the XFCE desktop.
 
 What is supported in remote desktop use:
 - Clipboard sharing between local machine and remote XFCE session
