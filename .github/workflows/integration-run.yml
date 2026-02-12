@@ -163,23 +163,36 @@ jobs:
           }
 
           out="$(sudo -u "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
+          echo "$out"
           DISPLAY_NUM="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
           if [ -z "${DISPLAY_NUM:-}" ]; then
             DISPLAY_NUM="$(get_display || true)"
           fi
 
           [ -n "${DISPLAY_NUM:-}" ] || { echo "No XRDP display found after starting session"; exit 1; }
+          echo "Using DISPLAY=$DISPLAY_NUM"
 
           mkdir -p assets
-          if command -v xfce4-screenshooter >/dev/null 2>&1; then
-            sudo -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" xfce4-screenshooter -f -s "$PWD/assets/screenshot.png"
-          elif command -v import >/dev/null 2>&1; then
-            sudo -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" import -window root "$PWD/assets/screenshot.png"
-          else
-            echo "No screenshot tool available"
-            exit 1
-          fi
+          rm -f assets/screenshot.png
 
+          for i in {1..8}; do
+            echo "Screenshot attempt #$i"
+            if command -v xfce4-screenshooter >/dev/null 2>&1; then
+              sudo -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" xfce4-screenshooter -f -s "$PWD/assets/screenshot.png" || true
+            elif command -v import >/dev/null 2>&1; then
+              sudo -u "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" import -window root "$PWD/assets/screenshot.png" || true
+            else
+              echo "No screenshot tool available"
+              exit 1
+            fi
+
+            if [ -s assets/screenshot.png ]; then
+              break
+            fi
+            sleep 3
+          done
+
+          ls -l assets/screenshot.png || true
           test -s assets/screenshot.png
 
       - name: Commit screenshot update
