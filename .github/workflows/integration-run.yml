@@ -81,6 +81,8 @@ jobs:
           stop_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/stop" | extract_upid || true)"
           if [ -n "${stop_upid:-}" ]; then
             wait_upid "$stop_upid" || true
+            echo "VM stop completed; waiting 30 seconds before rollback..."
+            sleep 30
           fi
 
           echo "Rolling back snapshot ${PVE_SNAPSHOT}..."
