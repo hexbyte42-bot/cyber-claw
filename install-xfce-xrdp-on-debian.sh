@@ -307,6 +307,7 @@ echo "appmenu final readback:"
 xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
 xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
 xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
+xfce4-panel -r || true
 
 # 4) apply dock changes now
 plank >/dev/null 2>&1 &
