@@ -88,6 +88,7 @@ ensure_session_context() {
 run_in_session_context() {
   ensure_session_context
   log "Using DISPLAY=$SESSION_DISPLAY for xfconf/xfce4-panel operations"
+  log "Using DBUS_SESSION_BUS_ADDRESS=$SESSION_DBUS"
   run_as_user "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" "$@"
 }
 
