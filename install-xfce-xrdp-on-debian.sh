@@ -15,6 +15,19 @@ find_session_context() {
   local uid p env_display env_bus
   uid="$(id -u "$TARGET_USER")"
 
+  # Prefer dbus-daemon as source of truth for active session bus/display.
+  for p in $(pgrep -u "$uid" -x dbus-daemon 2>/dev/null || true); do
+    [[ -r "/proc/$p/environ" ]] || continue
+    env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
+    env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
+    if [[ -n "${env_display:-}" && -n "${env_bus:-}" ]]; then
+      SESSION_DISPLAY="$env_display"
+      SESSION_DBUS="$env_bus"
+      return 0
+    fi
+  done
+
+  # Fallback to common XFCE processes if dbus-daemon env is incomplete.
   for p in $(pgrep -u "$uid" -f 'xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
     [[ -r "/proc/$p/environ" ]] || continue
     env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
