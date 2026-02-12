@@ -275,14 +275,15 @@ set_int_array xfce4-panel /panels 1
 
 # 2) force plugin-2 to be appmenu (NOTE: your system stores type at /plugins/plugin-2)
 set_string xfce4-panel /plugins/plugin-2 appmenu
+xfce4-panel -r || true
 
 # 3) appmenu settings
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/bold-application-name true
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/compact-mode false
 set_bool xfce4-panel /plugins/plugin-2/plugins/plugin-2/expand false
-
-# 4) apply panel/dock changes now
 xfce4-panel -r || true
+
+# 4) apply dock changes now
 plank >/dev/null 2>&1 &
 '
 # -------------------------
