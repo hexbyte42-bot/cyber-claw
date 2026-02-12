@@ -4,6 +4,8 @@
 
 [中文 README](./README.zh-CN.md)
 
+![XFCE desktop screenshot](./assets/screenshot.png)
+
 ## One-Line Install (curl)
 
 You must run it on a clean installed debian 13 (trixie) cloud image.
