@@ -41,9 +41,9 @@ This setup uses `plank-reloaded` as the dock. To open its settings menu, hold **
    - Removes `panel-2`
    - Forces `plugin-2` to be the appmenu plugin
    - Applies appmenu settings
-7. Sets up OpenClaw gateway integration:
-   - Systemd user override to ensure an XRDP session exists
-   - XFCE autostart to restart the gateway after login
+7. Sets up OpenClaw gateway integration so OpenClaw runs in an XRDP desktop context (not a plain TTY/background context):
+   - Systemd user override that checks/creates an XRDP session before starting the gateway
+   - XFCE autostart entry that restarts the gateway after desktop login, binding runtime to that XRDP user session
 8. Disables `lightdm` (headless/remote workflow).
 
 At the end, it prints the manual step for installing OpenClaw.
@@ -72,6 +72,7 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 
 ## Notes
 
+- The intended runtime model is: OpenClaw gateway should live inside the XRDP desktop session context. This avoids mismatches where GUI-related behavior runs outside the desktop session.
 - The script tries to interact with a live XRDP session to apply XFCE settings reliably. If no XRDP session exists, it will attempt to create one.
 - XFCE panel settings are written via `xfconf-query` in the XRDP session.
 - The script disables `lightdm` by default (headless/remote workflow); if you want a local GUI login, re-enable it manually.

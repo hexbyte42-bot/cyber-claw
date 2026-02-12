@@ -39,9 +39,9 @@ curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-
    - 删除 `panel-2`
    - 强制 `plugin-2` 使用 appmenu 插件
    - 应用 appmenu 设置
-7. 配置 OpenClaw 网关集成：
-   - 添加 systemd 用户级 override，确保存在 XRDP 会话
-   - 配置 XFCE 自动启动，在登录后重启网关
+7. 配置 OpenClaw 网关集成，目标是让 OpenClaw 运行在 XRDP 桌面会话上下文中（而不是纯 TTY/后台上下文）：
+   - 添加 systemd 用户级 override：网关启动前先检查/拉起 XRDP 会话
+   - 配置 XFCE 自动启动：桌面登录后重启网关，把运行上下文绑定到该 XRDP 用户会话
 8. 禁用 `lightdm`（无头/远程工作流）。
 
 脚本结束时会打印安装 OpenClaw 的手动步骤。
@@ -70,6 +70,7 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 
 ## 说明
 
+- 设计目标是：让 OpenClaw 网关运行在 XRDP 桌面会话上下文里，避免 GUI 相关行为跑在错误上下文（例如纯后台会话）。
 - 脚本会尝试与一个正在运行的 XRDP 会话交互，以可靠应用 XFCE 设置。若不存在 XRDP 会话，它会尝试创建一个。
 - XFCE 面板设置会通过 XRDP 会话内的 `xfconf-query` 写入。
 - 脚本默认禁用 `lightdm`（无头/远程工作流）；如果你需要本地 GUI 登录，请手动重新启用。
