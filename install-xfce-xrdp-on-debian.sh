@@ -8,48 +8,20 @@ set -euo pipefail
 log() { printf "\n\033[1;32m[+] %s\033[0m\n" "$*"; }
 warn() { printf "\n\033[1;33m[!] %s\033[0m\n" "$*"; }
 err() { printf "\n\033[1;31m[✗] %s\033[0m\n" "$*"; exit 1; }
-XRDP_DISPLAY=""
-ensure_xrdp_display() {
-  local disp out
+SESSION_DISPLAY=""
+SESSION_DBUS=""
 
-  if [[ -n "${XRDP_DISPLAY:-}" ]]; then
-    echo "$XRDP_DISPLAY"
-    return 0
-  fi
-
-  # Prefer the latest session display for this user.
-  disp="$(run_as_user "$TARGET_USER" xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
-    $1=="Display:" {d=$2}
-    $1=="User:" && $2==u {last=d}
-    END {print last}
-  ')"
-
-  if [[ -z "${disp:-}" ]]; then
-    out="$(run_as_user "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
-    disp="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
-  fi
-
-  if [[ -z "${disp:-}" ]]; then
-    warn "Cannot determine XRDP display for $TARGET_USER. xrdp-sesrun output was:"
-    printf '  %s\n' "$out"
-    return 1
-  fi
-
-  XRDP_DISPLAY="$disp"
-  echo "$XRDP_DISPLAY"
-}
-find_dbus_for_display() {
-  local disp="$1" uid p env_display env_bus
+find_session_context() {
+  local uid p env_display env_bus
   uid="$(id -u "$TARGET_USER")"
 
   for p in $(pgrep -u "$uid" -f 'xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
     [[ -r "/proc/$p/environ" ]] || continue
     env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
-    [[ "$env_display" == "$disp" ]] || continue
-
     env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
-    if [[ -n "$env_bus" ]]; then
-      echo "$env_bus"
+    if [[ -n "${env_display:-}" && -n "${env_bus:-}" ]]; then
+      SESSION_DISPLAY="$env_display"
+      SESSION_DBUS="$env_bus"
       return 0
     fi
   done
@@ -57,17 +29,38 @@ find_dbus_for_display() {
   return 1
 }
 
-run_in_xrdp_session() {
-  local disp bus
-  disp="$(ensure_xrdp_display)"
-  bus="$(find_dbus_for_display "$disp" || true)"
-  log "Using DISPLAY=$disp for xfconf/xfce4-panel operations"
+ensure_session_context() {
+  local out disp
 
-  if [[ -z "${bus:-}" ]]; then
-    err "No matching DBUS_SESSION_BUS_ADDRESS found for DISPLAY=$disp"
+  if [[ -n "${SESSION_DISPLAY:-}" && -n "${SESSION_DBUS:-}" ]]; then
+    return 0
   fi
 
-  run_as_user "$TARGET_USER" env DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" "$@"
+  # First, try to reuse an existing graphical session context (physical or XRDP).
+  if find_session_context; then
+    return 0
+  fi
+
+  # If no session context exists, start XRDP session then detect its context.
+  out="$(run_as_user "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
+  disp="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
+  if [[ -n "${disp:-}" ]]; then
+    SESSION_DISPLAY="$disp"
+  fi
+
+  if find_session_context; then
+    return 0
+  fi
+
+  warn "Cannot determine graphical session context for $TARGET_USER. xrdp-sesrun output was:"
+  printf '  %s\n' "$out"
+  return 1
+}
+
+run_in_session_context() {
+  ensure_session_context
+  log "Using DISPLAY=$SESSION_DISPLAY for xfconf/xfce4-panel operations"
+  run_as_user "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" "$@"
 }
 
 # Optional flags
@@ -205,14 +198,8 @@ log "Install Papirus icon theme / global menu / LibreOffice / Chromium"
 apt_run install -y papirus-icon-theme xfce4-appmenu-plugin libreoffice libreoffice-gtk3 chromium
 
 # Set Papirus as the default icon theme (XFCE)
-log "Set default icon theme to Papirus (ensure XRDP session + DISPLAY + D-Bus)"
-
-DISPLAY_NUM="$(ensure_xrdp_display)"
-log "Using DISPLAY=$DISPLAY_NUM"
-
-# dbus-run-session is more reliable than dbus-launch: it provides a temporary session bus for this command
-run_as_user "$TARGET_USER" env DISPLAY="$DISPLAY_NUM" dbus-run-session -- \
-  xfconf-query -c xsettings -p /Net/IconThemeName -s Papirus
+log "Set default icon theme to Papirus"
+run_in_session_context xfconf-query -c xsettings -p /Net/IconThemeName -s Papirus
 
 # -------------------------
 # plank-reloaded
@@ -234,7 +221,7 @@ run_as_user "$TARGET_USER" mkdir -p "$AUTOSTART"
 log "Configure XFCE panel (remove panel-2, set appmenu as plugin-2, apply settings)"
 
 # shellcheck disable=SC2016
-run_in_xrdp_session bash -lc '
+run_in_session_context bash -lc '
 set -euo pipefail
 command -v xfconf-query >/dev/null
 command -v xfce4-panel  >/dev/null
