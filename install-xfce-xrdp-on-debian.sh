@@ -171,7 +171,7 @@ apt_run install -y \
   fonts-noto fonts-noto-cjk fonts-noto-color-emoji
 
 $SUDO systemctl enable --now xrdp
-$SUDO systemctl disable --now lightdm
+$SUDO systemctl disable lightdm
 
 # -------------------------
 # fcitx5 + Chinese addons
