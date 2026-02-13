@@ -96,6 +96,7 @@ curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-
 - 基于 Debian 且使用 `apt` 的系统
 - 使用 `sudo` 运行（或直接使用 `root`）
 - 需要网络访问以安装软件包并拉取 Plank 仓库密钥
+- 内存：**2 GB 及以上**即可。安装完成后，基础服务 + 桌面环境常驻内存占用通常约 **700 MB**。
 
 ## 用法
 

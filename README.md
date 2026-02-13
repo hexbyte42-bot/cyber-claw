@@ -96,6 +96,7 @@ At the end, it prints the manual step for installing OpenClaw.
 - Debian-based system with `apt`
 - Run with `sudo` (or as `root`)
 - Network access to install packages and pull the Plank repo key
+- Memory: **2 GB RAM or more** is sufficient. After setup, baseline desktop + core services memory usage is typically around **700 MB**.
 
 ## Usage
 
