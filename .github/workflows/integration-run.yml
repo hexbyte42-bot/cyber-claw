@@ -150,8 +150,81 @@ jobs:
             sudo test -s "$f"
           done
 
+      - name: Screenshot moved to post-reboot job
+        run: echo "Screenshot is handled in capture-screenshot job"
+
+  reboot-vm:
+    needs: run-script
+    runs-on: [self-hosted, pve-controller]
+    environment: self-hosted-on-tiger
+    timeout-minutes: 10
+
+    steps:
+      - name: Reboot test VM on Proxmox
+        env:
+          PVE_HOST: ${{ secrets.PVE_HOST }}
+          PVE_TOKEN_ID: ${{ secrets.PVE_TOKEN_ID }}
+          PVE_TOKEN_SECRET: ${{ secrets.PVE_TOKEN_SECRET }}
+          PVE_NODE: ${{ secrets.PVE_NODE }}
+          PVE_VMID: ${{ secrets.PVE_VMID }}
+        run: |
+          set -euo pipefail
+          auth="Authorization: PVEAPIToken=${PVE_TOKEN_ID}=${PVE_TOKEN_SECRET}"
+
+          extract_upid() {
+            sed -n 's/.*"data":"\([^"]*\)".*/\1/p'
+          }
+
+          wait_upid() {
+            local upid="$1"
+            local exitstatus=""
+            for i in {1..120}; do
+              task_json="$(curl -sk -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/tasks/${upid}/status")"
+              exitstatus="$(echo "$task_json" | sed -n 's/.*"exitstatus":"\([^"]*\)".*/\1/p')"
+              status="$(echo "$task_json" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')"
+              echo "Task $upid check #$i: status=${status:-unknown} exit=${exitstatus:-pending}"
+              if [ "$status" = "stopped" ] || [ -n "$exitstatus" ]; then
+                break
+              fi
+              sleep 2
+            done
+            [ "$exitstatus" = "OK" ]
+          }
+
+          reboot_upid="$(curl -sk -X POST -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/reboot" | extract_upid || true)"
+          if [ -n "${reboot_upid:-}" ]; then
+            wait_upid "$reboot_upid" || true
+          fi
+
+          for i in {1..36}; do
+            status_json="$(curl -sk -H "$auth" "${PVE_HOST}/api2/json/nodes/${PVE_NODE}/qemu/${PVE_VMID}/status/current")"
+            vm_status="$(echo "$status_json" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')"
+            echo "VM status after reboot #$i: ${vm_status:-unknown}"
+            if [ "$vm_status" = "running" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+  capture-screenshot:
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: reboot-vm
+    runs-on: [self-hosted, debian13, minimal]
+    timeout-minutes: 20
+
+    steps:
+      - name: Ensure git is installed
+        run: |
+          set -euo pipefail
+          if ! command -v git >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y git
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Capture XFCE screenshot to assets/screenshot.png
-        if: ${{ github.event_name != 'pull_request' }}
         env:
           TARGET_USER: river
         run: |
@@ -196,7 +269,7 @@ jobs:
             fi
             sleep 1
           done
-          sleep 30
+          sleep 5
 
           if command -v xfce4-screenshooter >/dev/null 2>&1; then
             sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" xfce4-screenshooter -f -s "$PWD/assets/screenshot.png"
@@ -211,7 +284,6 @@ jobs:
           test -s assets/screenshot.png
 
       - name: Commit screenshot update
-        if: ${{ github.event_name != 'pull_request' }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -226,7 +298,7 @@ jobs:
 
   shutdown-vm:
     if: ${{ always() }}
-    needs: [reset-vm, run-script]
+    needs: [reset-vm, run-script, reboot-vm, capture-screenshot]
     runs-on: [self-hosted, pve-controller]
     environment: self-hosted-on-tiger
     timeout-minutes: 10

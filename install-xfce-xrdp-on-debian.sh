@@ -314,26 +314,27 @@ $SUDO chmod 0644 "$AUTOSTART/plank-reloaded.desktop"
 run_as_user "$TARGET_USER" test -s "$AUTOSTART/restart-openclaw-gateway.desktop" || err "restart-openclaw-gateway.desktop is empty"
 run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "plank autostart desktop file is empty at finish"
 
-if [[ -n "$(latest_xrdp_display)" ]]; then
-  log "Logging out current desktop session(s) for $TARGET_USER"
-
-  # Find loginctl session id that belongs to this user and XRDP display.
-  sid=""
-  for candidate in $(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$TARGET_USER" '$3==u {print $1}'); do
-    display="$(loginctl show-session "$candidate" -p Display --value 2>/dev/null || true)"
-    if [[ "$display" == "$(latest_xrdp_display)" ]]; then
-      sid="$candidate"
-      break
-    fi
-  done
-
-  if [[ -n "${sid:-}" ]]; then
-    loginctl terminate-session "$sid" || true
-  else
-    warn "No matching loginctl XRDP session found for DISPLAY=$(latest_xrdp_display); skip logout step."
-  fi
-else
-  warn "No XRDP session found for $TARGET_USER; skip logout step."
-fi
+# logout step disabled
+# if [[ -n "$(latest_xrdp_display)" ]]; then
+#   log "Logging out current desktop session(s) for $TARGET_USER"
+#
+#   # Find loginctl session id that belongs to this user and XRDP display.
+#   sid=""
+#   for candidate in $(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$TARGET_USER" '$3==u {print $1}'); do
+#     display="$(loginctl show-session "$candidate" -p Display --value 2>/dev/null || true)"
+#     if [[ "$display" == "$(latest_xrdp_display)" ]]; then
+#       sid="$candidate"
+#       break
+#     fi
+#   done
+#
+#   if [[ -n "${sid:-}" ]]; then
+#     loginctl terminate-session "$sid" || true
+#   else
+#     warn "No matching loginctl XRDP session found for DISPLAY=$(latest_xrdp_display); skip logout step."
+#   fi
+# else
+#   warn "No XRDP session found for $TARGET_USER; skip logout step."
+# fi
 
 warn "Setup finished. Please connect again via your XRDP client / remote desktop tool to enter the configured XFCE session."
