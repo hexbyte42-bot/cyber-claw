@@ -268,8 +268,6 @@ run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1
 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1/show-button-title -t bool -s false
 run_in_session_context xfce4-panel -r || true
 
-run_in_session_context xfce4-panel -r || true
-
 # 4) apply dock changes now
 run_in_session_context plank >/dev/null 2>&1 &
 # -------------------------
