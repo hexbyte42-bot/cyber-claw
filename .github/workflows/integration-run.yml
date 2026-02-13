@@ -196,7 +196,7 @@ jobs:
             fi
             sleep 1
           done
-          sleep 5
+          sleep 15
 
           if command -v xfce4-screenshooter >/dev/null 2>&1; then
             sudo -u "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" xfce4-screenshooter -f -s "$PWD/assets/screenshot.png"
