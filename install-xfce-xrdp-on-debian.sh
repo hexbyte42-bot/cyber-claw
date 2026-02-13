@@ -168,6 +168,7 @@ log "Install XFCE / XRDP / fonts"
 apt_run install -y \
   xfce4 xfce4-goodies \
   xrdp xorgxrdp xclip xserver-xorg-input-libinput \
+  pipewire-audio pipewire-module-xrdp \
   fonts-noto fonts-noto-cjk fonts-noto-color-emoji
 
 $SUDO systemctl enable --now xrdp
