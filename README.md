@@ -11,7 +11,7 @@
 - A remote desktop environment that is highly suitable for human-AI collaboration.
 - Customized XFCE with a core macOS-like GUI experience.
 - Connect through RDP for smoother performance than VNC, with clipboard sharing, file copy/paste, and audio/video transfer between hosts.
-- OpenClaw is configured to auto-start XRDP support on startup, so it can work directly in the desktop environment where humans log in remotely.
+- OpenClaw is configured to auto-start an XRDP session on startup, so it can work directly in the desktop environment where humans log in remotely.
 
 ## One-Line Install (curl)
 
