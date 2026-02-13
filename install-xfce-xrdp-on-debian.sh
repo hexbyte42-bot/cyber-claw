@@ -268,32 +268,6 @@ run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1
 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1/show-button-title -t bool -s false
 run_in_session_context xfce4-panel -r || true
 
-echo "appmenu readback after panel restart:"
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
-
-sleep 2
-echo "appmenu readback +2s:"
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
-
-sleep 3
-echo "appmenu readback +5s:"
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
-expand_now="$(run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true)"
-echo "$expand_now"
-if [[ "$expand_now" != "false" ]]; then
-  echo "expand drift detected, applying final override to false"
-  run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
-fi
-
-echo "appmenu final readback:"
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
-run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
 run_in_session_context xfce4-panel -r || true
 
 # 4) apply dock changes now
