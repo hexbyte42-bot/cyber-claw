@@ -13,6 +13,35 @@
 - 通过 RDP 协议连接远程桌面，相比 VNC 更加流畅；支持主机间共享剪贴板、复制粘贴文件、传输音频和视频。
 - 已配置好 OpenClaw 在启动时自动拉起 XRDP 会话，以便工作在人远程登录的桌面环境中。
 
+## ISO 安装后的准备说明（sudo + curl）
+
+如果你是通过 Debian ISO 安装系统，当前登录用户可能还没有 `sudo` 权限，也可能没有安装 `curl`。
+
+1. **给当前用户添加 sudo 权限**
+   - 先以 `root` 登录（或通过 `su -` 切换到 root）。
+   - 安装 sudo，并把你的用户加入 sudo 组：
+
+```bash
+apt-get update
+apt-get install -y sudo
+usermod -aG sudo <你的用户名>
+```
+
+   - 退出并重新登录后，执行下面命令确认 sudo 生效：
+
+```bash
+sudo -v
+```
+
+2. **如果没有 curl，先安装 curl**
+
+```bash
+sudo apt-get update
+sudo apt-get install -y curl
+```
+
+完成后，再继续执行下面的一行安装命令。
+
 ## 一行安装（curl）
 
 你必须在一台全新安装的 Debian 13（trixie）云镜像上运行本脚本。

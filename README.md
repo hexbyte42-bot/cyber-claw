@@ -13,6 +13,35 @@
 - Connect through RDP for smoother performance than VNC, with clipboard sharing, file copy/paste, and audio/video transfer between hosts.
 - OpenClaw is configured to auto-start an XRDP session on startup, so it can work directly in the desktop environment where humans log in remotely.
 
+## ISO Install Notes (sudo + curl)
+
+If you installed Debian from ISO, your login user may not have `sudo` yet, and `curl` may be missing.
+
+1. **Grant sudo privileges to your user**
+   - Log in as `root` (or switch to root with `su -`).
+   - Install sudo and add your user to sudo group:
+
+```bash
+apt-get update
+apt-get install -y sudo
+usermod -aG sudo <your-username>
+```
+
+   - Log out and log back in, then verify:
+
+```bash
+sudo -v
+```
+
+2. **Install curl if missing**
+
+```bash
+sudo apt-get update
+sudo apt-get install -y curl
+```
+
+Then continue with the one-line install below.
+
 ## One-Line Install (curl)
 
 You must run it on a clean installed debian 13 (trixie) cloud image.
