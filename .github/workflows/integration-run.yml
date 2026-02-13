@@ -157,8 +157,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "Detecting session context (DISPLAY + DBUS)..."
-          uid="$(id -u "$TARGET_USER")"
           SESSION_DISPLAY="$(xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
             $1=="Display:" {d=$2}
             $1=="User:" && $2==u {last=d}
@@ -167,8 +165,7 @@ jobs:
 
           if [ -z "${SESSION_DISPLAY:-}" ]; then
             echo "No XRDP session found. Starting xrdp-sesrun..."
-            out="$(sudo -u "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
-            echo "$out"
+            sudo -u "$TARGET_USER" xrdp-sesrun >/dev/null 2>&1 || true
             SESSION_DISPLAY="$(xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
               $1=="Display:" {d=$2}
               $1=="User:" && $2==u {last=d}
@@ -176,26 +173,10 @@ jobs:
             ')"
           fi
 
-          [ -n "${SESSION_DISPLAY:-}" ] || { echo "Cannot determine session DISPLAY for $TARGET_USER"; exit 1; }
+          [ -n "${SESSION_DISPLAY:-}" ] || { echo "Cannot determine XRDP DISPLAY"; exit 1; }
+          SESSION_DBUS="unix:path=/run/user/$(id -u "$TARGET_USER")/bus"
+          [ -S "/run/user/$(id -u "$TARGET_USER")/bus" ] || { echo "DBUS bus socket missing"; exit 1; }
 
-          SESSION_DBUS=""
-          if [ -S "/run/user/${uid}/bus" ]; then
-            SESSION_DBUS="unix:path=/run/user/${uid}/bus"
-          fi
-          if [ -z "${SESSION_DBUS:-}" ]; then
-            for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
-              [ -r "/proc/$p/environ" ] || continue
-              env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
-              [ -n "${env_bus:-}" ] || continue
-              SESSION_DBUS="$env_bus"
-              break
-            done
-          fi
-
-          [ -n "${SESSION_DBUS:-}" ] || { echo "Cannot determine DBUS session address for $TARGET_USER"; exit 1; }
-
-          echo "XRDP session list:"
-          xrdp-sesadmin -c list 2>/dev/null || true
           echo "Using DISPLAY=$SESSION_DISPLAY"
           echo "Using DBUS_SESSION_BUS_ADDRESS=$SESSION_DBUS"
 
