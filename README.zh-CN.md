@@ -44,11 +44,11 @@ sudo apt-get install -y curl
 
 ## 一行安装（curl）
 
-你必须在一台全新安装的 Debian 13（trixie）云镜像上运行本脚本。
+请在**全新 Debian 13（trixie）系统**上运行本脚本。推荐使用云镜像，流程最简单。
 
-请在 <https://www.debian.org/distrib/> 查看“云镜像”，并选择适合你的镜像。
+你可以在 <https://www.debian.org/distrib/> 查看并选择合适的 Debian 云镜像。
 
-或者你也可以从 ISO 手动安装：请**只勾选 Xfce 桌面**，并**取消其它所有桌面环境**。
+如果你是通过 ISO 安装，请在任务选择时：**只勾选 Xfce 桌面**，并**取消其它所有桌面环境**。
 
 通过 SSH 登录到新安装的虚拟机后，执行：
 
@@ -56,9 +56,15 @@ sudo apt-get install -y curl
 curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | bash
 ```
 
+> 如果当前用户不是 root，请使用 sudo：
+>
+> ```bash
+> curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | sudo bash
+> ```
+
 本仓库包含一个脚本，用于把 Debian 机器配置为 XFCE + XRDP，配置中文输入（fcitx5 + 拼音），优化桌面体验，并接好 OpenClaw 会话行为，以便后续 OpenClaw 安装能够顺利进行。
 
-完成后，你可以使用 ***Windows 远程桌面*** 或 ***Windows App for Mac***，通过 IP 地址连接到你的虚拟机。
+安装完成并重启后，你可以使用 ***Windows 远程桌面*** 或 ***Windows App for Mac***，通过 VM IP 连接到你的虚拟机。
 
 ## 安装后如何使用
 

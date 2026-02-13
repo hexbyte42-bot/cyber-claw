@@ -44,21 +44,27 @@ Then continue with the one-line install below.
 
 ## One-Line Install (curl)
 
-You must run it on a clean installed debian 13 (trixie) cloud image.
+Use this script on a **fresh Debian 13 (trixie)** system. A cloud image is recommended for the simplest setup.
 
-Checkout "cloud image" at <https://www.debian.org/distrib/>, and choose the right one for you.
+Check Debian cloud images at <https://www.debian.org/distrib/> and choose one that fits your environment.
 
-Or you can manually install from ISO: **select only Xfce desktop**, and **deselect all other desktop environments**.
+If you install from ISO instead, during task selection: **select only Xfce desktop**, and **deselect all other desktop environments**.
 
-SSH to your newly installed VM, and run:
+After SSH login to your new VM, run:
 
 ```bash
 curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | bash
 ```
 
+> If your current user is not root, run with sudo:
+>
+> ```bash
+> curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | sudo bash
+> ```
+
 This repository contains a single script that prepares a Debian machine with XFCE and XRDP, configures Chinese input (fcitx5 + pinyin), polishes the desktop, and wires OpenClaw session behavior so the final OpenClaw install can run smoothly.
 
-After that, you can use ***Windows Remote Desktop*** or ***Windows App for Mac*** to connect your VM with IP address.
+After installation and reboot, use ***Windows Remote Desktop*** or ***Windows App for Mac*** to connect to your VM IP.
 
 ## How to Use (after installation)
 
