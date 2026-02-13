@@ -56,12 +56,6 @@ After SSH login to your new VM, run:
 curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | bash
 ```
 
-> If your current user is not root, run with sudo:
->
-> ```bash
-> curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | sudo bash
-> ```
-
 This repository contains a single script that prepares a Debian machine with XFCE and XRDP, configures Chinese input (fcitx5 + pinyin), polishes the desktop, and wires OpenClaw session behavior so the final OpenClaw install can run smoothly.
 
 After installation and reboot, use ***Windows Remote Desktop*** or ***Windows App for Mac*** to connect to your VM IP.

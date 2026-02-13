@@ -56,12 +56,6 @@ sudo apt-get install -y curl
 curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | bash
 ```
 
-> 如果当前用户不是 root，请使用 sudo：
->
-> ```bash
-> curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | sudo bash
-> ```
-
 本仓库包含一个脚本，用于把 Debian 机器配置为 XFCE + XRDP，配置中文输入（fcitx5 + 拼音），优化桌面体验，并接好 OpenClaw 会话行为，以便后续 OpenClaw 安装能够顺利进行。
 
 安装完成并重启后，你可以使用 ***Windows 远程桌面*** 或 ***Windows App for Mac***，通过 VM IP 连接到你的虚拟机。
