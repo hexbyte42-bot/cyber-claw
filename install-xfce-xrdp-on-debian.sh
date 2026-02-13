@@ -338,3 +338,4 @@ run_as_user "$TARGET_USER" test -s "$AUTOSTART/plank-reloaded.desktop" || err "p
 # fi
 
 warn "Setup finished. Please connect again via your XRDP client / remote desktop tool to enter the configured XFCE session."
+warn "Then install OpenClaw manually: curl -fsSL https://openclaw.ai/install.sh | bash"
