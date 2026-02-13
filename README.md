@@ -6,6 +6,13 @@
 
 ![XFCE desktop screenshot](./assets/screenshot.png)
 
+## Remote Desktop Experience (Best for Human-AI Collaboration)
+
+- A remote desktop environment that is highly suitable for human-AI collaboration.
+- Customized XFCE with a core macOS-like GUI experience.
+- Connect through RDP for smoother performance than VNC, with clipboard sharing, file copy/paste, and audio/video transfer between hosts.
+- OpenClaw is configured to auto-start XRDP support on startup, so it can work directly in the desktop environment where humans log in remotely.
+
 ## One-Line Install (curl)
 
 You must run it on a clean installed debian 13 (trixie) cloud image.
@@ -30,10 +37,6 @@ After that, you can use ***Windows Remote Desktop*** or ***Windows App for Mac**
 2. Open your RDP client (Windows Remote Desktop / Windows App for Mac).
 3. Connect to `<VM-IP>:3389` with your Linux username/password.
 4. After login, use OpenClaw in the XFCE desktop.
-
-What is supported in remote desktop use:
-- Clipboard sharing between local machine and remote XFCE session
-- File transfer between local and remote machine (client-dependent; supported by Windows Remote Desktop / Windows App for Mac)
 
 ### Plank (dock) usage tip
 

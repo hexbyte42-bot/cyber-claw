@@ -4,6 +4,15 @@
 
 [English README](./README.md)
 
+![XFCE 桌面截图](./assets/screenshot.png)
+
+## 远程桌面使用能力说明（非常适合人机协作）
+
+- 非常适合人机协作的远程桌面环境。
+- 定制化 XFCE，提供仿 macOS 核心 GUI 体验。
+- 通过 RDP 协议连接远程桌面，相比 VNC 更加流畅；支持主机间共享剪贴板、复制粘贴文件、传输音频和视频。
+- 已配置好 OpenClaw 在启动时自动拉起 XRDP 服务，以便工作在人远程登录的桌面环境中。
+
 ## 一行安装（curl）
 
 你必须在一台全新安装的 Debian 13（trixie）云镜像上运行本脚本。
@@ -28,10 +37,6 @@ curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-
 2. 打开 RDP 客户端（Windows 远程桌面 / Windows App for Mac）。
 3. 使用 `<VM-IP>:3389`，输入 Linux 用户名和密码登录。
 4. 登录后，在 XFCE 桌面中使用 OpenClaw。
-
-远程桌面使用能力说明：
-- 支持本地与远程 XFCE 会话之间共享剪贴板
-- 支持本地与远程机器之间传输文件（取决于客户端；Windows 远程桌面 / Windows App for Mac 支持）
 
 ### Plank（dock）使用提示
 
