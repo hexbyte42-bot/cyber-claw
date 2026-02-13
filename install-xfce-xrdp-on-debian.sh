@@ -254,68 +254,48 @@ run_as_user "$TARGET_USER" mkdir -p "$AUTOSTART"
 
 log "Configure XFCE panel (remove panel-2, set appmenu as plugin-2, apply settings)"
 
-# shellcheck disable=SC2016
-run_in_session_context bash -lc '
-set -euo pipefail
-command -v xfconf-query >/dev/null
-command -v xfce4-panel  >/dev/null
-command -v timeout >/dev/null
-
-set_int_array() {
-  local channel="$1"; shift
-  local prop="$1"; shift
-  local -a vals=("$@")
-  local -a args=(--create -c "$channel" -p "$prop")
-  for v in "${vals[@]}"; do
-    args+=(-t int -s "$v")
-  done
-  args+=(-a)
-  xfconf-query "${args[@]}"
-}
-
 # 1) delete panel-2 by keeping only panel-1
-set_int_array xfce4-panel /panels 1
+run_in_session_context xfconf-query --create -c xfce4-panel -p /panels -t int -s 1 -a
 
 # 2) force plugin-2 to be appmenu (NOTE: your system stores type at /plugins/plugin-2)
-xfconf-query --create -c xfce4-panel -p /plugins/plugin-2 -t string -s appmenu
+run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2 -t string -s appmenu
 
 # 3) appmenu settings
-xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name -t bool -s true
-xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode -t bool -s false
-xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
-xfce4-panel -r || true
+run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name -t bool -s true
+run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode -t bool -s false
+run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
+run_in_session_context xfce4-panel -r || true
 
 echo "appmenu readback after panel restart:"
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
 
 sleep 2
 echo "appmenu readback +2s:"
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
 
 sleep 3
 echo "appmenu readback +5s:"
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
-expand_now="$(xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true)"
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+expand_now="$(run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true)"
 echo "$expand_now"
 if [[ "$expand_now" != "false" ]]; then
   echo "expand drift detected, applying final override to false"
-  xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
+  run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
 fi
 
 echo "appmenu final readback:"
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
-xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
-xfce4-panel -r || true
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name || true
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode || true
+run_in_session_context xfconf-query -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand || true
+run_in_session_context xfce4-panel -r || true
 
 # 4) apply dock changes now
-plank >/dev/null 2>&1 &
-'
+run_in_session_context plank >/dev/null 2>&1 &
 # -------------------------
 # openclaw-gateway + xrdp session binding
 # -------------------------
