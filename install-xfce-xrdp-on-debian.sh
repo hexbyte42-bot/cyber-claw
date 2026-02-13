@@ -264,6 +264,8 @@ run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2
 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name -t bool -s true
 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode -t bool -s false
 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
+run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1/button-icon -t string -s xfce4_xicon2
+run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1/show-button-title -t bool -s false
 run_in_session_context xfce4-panel -r || true
 
 echo "appmenu readback after panel restart:"
