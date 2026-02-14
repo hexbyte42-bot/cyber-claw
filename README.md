@@ -13,6 +13,23 @@
 - Connect through RDP for smoother performance than VNC, with clipboard sharing, file copy/paste, and audio/video transfer between hosts.
 - OpenClaw is configured to auto-start an XRDP session on startup, so it can work directly in the desktop environment where humans log in remotely.
 
+## One-Line Install (curl)
+
+Use this script on a **fresh Debian 13 (trixie)** system. A cloud image is recommended for the simplest setup.
+
+Check Debian cloud images at <https://www.debian.org/distrib/> and choose one that fits your environment.
+
+If you install from ISO instead, during task selection: **select only Xfce desktop**, and **deselect all other desktop environments**.
+
+After SSH login to your new VM, run:
+
+```bash
+curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | bash
+```
+
+This repository contains a single script that prepares a Debian machine with XFCE and XRDP, configures Chinese input (fcitx5 + pinyin), polishes the desktop, and wires OpenClaw session behavior so the final OpenClaw install can run smoothly.
+
+After installation and reboot, use ***Windows Remote Desktop*** or ***Windows App for Mac*** to connect to your VM IP.
 ## ISO Install Notes (sudo + curl)
 
 If you installed Debian from ISO, your login user may not have `sudo` yet, and `curl` may be missing.
@@ -42,23 +59,6 @@ sudo apt-get install -y curl
 
 Then continue with the one-line install below.
 
-## One-Line Install (curl)
-
-Use this script on a **fresh Debian 13 (trixie)** system. A cloud image is recommended for the simplest setup.
-
-Check Debian cloud images at <https://www.debian.org/distrib/> and choose one that fits your environment.
-
-If you install from ISO instead, during task selection: **select only Xfce desktop**, and **deselect all other desktop environments**.
-
-After SSH login to your new VM, run:
-
-```bash
-curl -fsSL https://github.com/riverscn/cyber-claw/raw/main/install-xfce-xrdp-on-debian.sh | bash
-```
-
-This repository contains a single script that prepares a Debian machine with XFCE and XRDP, configures Chinese input (fcitx5 + pinyin), polishes the desktop, and wires OpenClaw session behavior so the final OpenClaw install can run smoothly.
-
-After installation and reboot, use ***Windows Remote Desktop*** or ***Windows App for Mac*** to connect to your VM IP.
 
 ## How to Use (after installation)
 
