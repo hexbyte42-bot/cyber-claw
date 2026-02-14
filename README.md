@@ -13,6 +13,13 @@
 - Connect through RDP for smoother performance than VNC, with clipboard sharing, file copy/paste, and audio/video transfer between hosts.
 - OpenClaw is configured to auto-start an XRDP session on startup, so it can work directly in the desktop environment where humans log in remotely.
 
+## Requirements
+
+- Debian-based system with `apt`
+- Current user has `sudo` privileges
+- Network access to install packages and pull the Plank repo key
+- Memory: **2 GB RAM or more** is sufficient. After setup, baseline desktop + core services memory usage is typically around **700 MB**.
+
 ## One-Line Install (curl)
 
 Use this script on a **fresh Debian 13 (trixie)** system. A cloud image is recommended for the simplest setup.
@@ -91,20 +98,7 @@ This setup uses `plank-reloaded` as the dock. To open its settings menu, hold **
 
 At the end, it prints the manual step for installing OpenClaw.
 
-## Requirements
 
-- Debian-based system with `apt`
-- Run with `sudo` (or as `root`)
-- Network access to install packages and pull the Plank repo key
-- Memory: **2 GB RAM or more** is sufficient. After setup, baseline desktop + core services memory usage is typically around **700 MB**.
-
-## Usage
-
-```bash
-sudo bash install-xfce-xrdp-on-debian.sh
-```
-
-The script is designed to be run once on a fresh or clean Debian instance. It will attempt to discover the target user (the user invoking `sudo`) and configure that user’s home directory for XFCE settings, autostart entries, and systemd user overrides.
 
 ## Final Manual Step (OpenClaw Install)
 
