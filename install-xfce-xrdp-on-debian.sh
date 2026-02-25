@@ -84,6 +84,15 @@ ensure_session_context() {
     return 0
   fi
 
+  log "Waiting for XRDP session context to become ready..."
+  for _ in {1..30}; do
+    sleep 1
+    if find_session_context; then
+      log "XRDP session context ready after wait: DISPLAY=$SESSION_DISPLAY"
+      return 0
+    fi
+  done
+
   warn "Cannot determine graphical session context for $TARGET_USER. xrdp-sesrun output was:"
   printf '  %s\n' "$out"
   return 1
