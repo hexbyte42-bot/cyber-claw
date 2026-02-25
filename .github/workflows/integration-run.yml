@@ -123,7 +123,7 @@ jobs:
           set -euo pipefail
           if ! command -v git >/dev/null 2>&1; then
             sudo apt-get update
-            sudo apt-get install -y git
+            sudo env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y git
           fi
 
       - name: Checkout
@@ -218,7 +218,7 @@ jobs:
           set -euo pipefail
           if ! command -v git >/dev/null 2>&1; then
             sudo apt-get update
-            sudo apt-get install -y git
+            sudo env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y git
           fi
 
       - name: Checkout

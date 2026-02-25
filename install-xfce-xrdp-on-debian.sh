@@ -153,7 +153,7 @@ apt_run() {
           "$@"
     fi
   else
-    $SUDO apt-get "$@"
+    $SUDO env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get "$@"
   fi
 }
 
