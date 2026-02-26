@@ -5,6 +5,12 @@ set -euo pipefail
 # Debian + XFCE + XRDP automated setup (before installing OpenClaw)
 # =========================
 
+# Proxy support
+export http_proxy="${http_proxy:-}"
+export https_proxy="${https_proxy:-}"
+export HTTP_PROXY="${HTTP_PROXY:-}"
+export HTTPS_PROXY="${HTTPS_PROXY:-}"
+
 log() { printf "\n\033[1;32m[+] %s\033[0m\n" "$*"; }
 warn() { printf "\n\033[1;33m[!] %s\033[0m\n" "$*"; }
 err() { printf "\n\033[1;31m[✗] %s\033[0m\n" "$*"; exit 1; }
@@ -147,22 +153,28 @@ log "Target user: $TARGET_USER"
 log "Target HOME: $TARGET_HOME"
 
 apt_run() {
+  local proxy_env=""
+  [[ -n "$http_proxy" ]] && proxy_env="$proxy_env http_proxy=$http_proxy"
+  [[ -n "$https_proxy" ]] && proxy_env="$proxy_env https_proxy=$https_proxy"
+  [[ -n "$HTTP_PROXY" ]] && proxy_env="$proxy_env HTTP_PROXY=$HTTP_PROXY"
+  [[ -n "$HTTPS_PROXY" ]] && proxy_env="$proxy_env HTTPS_PROXY=$HTTPS_PROXY"
+  
   if [[ "$APT_QUIET" == "1" ]]; then
     if [[ -n "$SUDO" ]]; then
-      $SUDO env DEBIAN_FRONTEND=noninteractive \
+      $SUDO env $proxy_env DEBIAN_FRONTEND=noninteractive \
         apt-get -q -y \
           -o Dpkg::Use-Pty=0 \
           -o Dpkg::Progress-Fancy=0 \
           "$@"
     else
-      DEBIAN_FRONTEND=noninteractive \
+      env $proxy_env DEBIAN_FRONTEND=noninteractive \
         apt-get -q -y \
           -o Dpkg::Use-Pty=0 \
           -o Dpkg::Progress-Fancy=0 \
           "$@"
     fi
   else
-    $SUDO env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get "$@"
+    $SUDO env $proxy_env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get "$@"
   fi
 }
 
@@ -237,8 +249,29 @@ fcitx5 -rd 2>/dev/null || true
 # -------------------------
 # Desktop polish
 # -------------------------
-log "Install Papirus icon theme / global menu / LibreOffice / Chromium"
-apt_run install -y papirus-icon-theme xfce4-appmenu-plugin libreoffice libreoffice-gtk3 chromium
+log "Install Papirus icon theme / global menu / WPS Office / Chromium"
+apt_run install -y papirus-icon-theme xfce4-appmenu-plugin chromium
+
+# Install WPS Office
+log "Install WPS Office"
+WPS_DEB_URL="https://wdl1.pcfg.cache.wpscdn.com/wpsdl/wpsoffice/download/linux/11723/wps-office_11.1.0.11723.XA_amd64.deb"
+WPS_DEB="/tmp/wps-office.deb"
+
+if [[ -n "$http_proxy" || -n "$https_proxy" ]]; then
+  log "Downloading WPS with proxy..."
+  curl --proxy "$http_proxy" -fsSL "$WPS_DEB_URL" -o "$WPS_DEB" 2>/dev/null || \
+  curl -fsSL "$WPS_DEB_URL" -o "$WPS_DEB"
+else
+  curl -fsSL "$WPS_DEB_URL" -o "$WPS_DEB"
+fi
+
+if [[ -f "$WPS_DEB" ]]; then
+  $SUDO dpkg -i "$WPS_DEB" || $SUDO apt-get install -f -y
+  rm -f "$WPS_DEB"
+  log "WPS Office installed successfully"
+else
+  warn "Failed to download WPS Office, skipping..."
+fi
 
 # Set Papirus as the default icon theme (XFCE)
 log "Set default icon theme to Papirus"
