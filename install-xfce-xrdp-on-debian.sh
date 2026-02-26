@@ -412,23 +412,27 @@ run_as_user "$TARGET_USER" mkdir -p "$AUTOSTART"
 log "Configure XFCE panel (remove panel-2, set appmenu as plugin-2, apply settings)"
 
 # 1) delete panel-2 by keeping only panel-1
-run_in_session_context xfconf-query --create -c xfce4-panel -p /panels -t int -s 1 -a
+timeout 5 run_in_session_context xfconf-query --create -c xfce4-panel -p /panels -t int -s 1 -a || \
+  warn "Failed to configure panel-2 (may need manual config)"
 
 # 2) force plugin-2 to be appmenu
-run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2 -t string -s appmenu
+timeout 5 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2 -t string -s appmenu || \
+  warn "Failed to set appmenu plugin"
 
-# 3) appmenu settings
-run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name -t bool -s true
-run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode -t bool -s false
-run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
-run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1/button-icon -t string -s xfce4_xicon2
-run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1/show-button-title -t bool -s false
+# 3) appmenu settings (ignore failures, not critical)
+timeout 5 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/bold-application-name -t bool -s true || true
+timeout 5 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/compact-mode -t bool -s false || true
+timeout 5 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false || true
+timeout 5 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1/button-icon -t string -s xfce4_xicon2 || true
+timeout 5 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1/show-button-title -t bool -s false || true
 
-# Restart panel (ignore errors if panel is not fully ready yet)
-run_in_session_context xfce4-panel -r || warn "xfce4-panel restart failed (may need manual restart after login)"
+# Restart panel (background, don't wait)
+log "Restarting XFCE panel..."
+run_in_session_context timeout 3 xfce4-panel -r || warn "xfce4-panel restart failed (will restart after login)"
 
-# Start dock
-run_in_session_context plank >/dev/null 2>&1 &
+# Start dock (background)
+log "Starting plank dock..."
+run_in_session_context timeout 3 plank >/dev/null 2>&1 &
 
 # -------------------------
 # openclaw-gateway + xrdp session binding
