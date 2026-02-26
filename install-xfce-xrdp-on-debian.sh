@@ -64,6 +64,101 @@ run_with_proxy() {
     fi
 }
 
+# Session context detection for XFCE configuration
+SESSION_DISPLAY=""
+SESSION_DBUS=""
+
+latest_xrdp_display() {
+  run_as_user "$TARGET_USER" xrdp-sesadmin -c=list 2>/dev/null | awk -v u="$TARGET_USER" '
+    $1=="Display:" {d=$2}
+    $1=="User:" && $2==u {last=d}
+    END {print last}
+  '
+}
+
+find_session_context() {
+  local uid p env_display env_bus bus_path
+  uid="$(id -u "$TARGET_USER")"
+
+  bus_path="/run/user/${uid}/bus"
+  if [[ -S "$bus_path" ]]; then
+    SESSION_DBUS="unix:path=$bus_path"
+  fi
+
+  SESSION_DISPLAY="$(latest_xrdp_display)"
+
+  if [[ -z "${SESSION_DISPLAY:-}" ]]; then
+    for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel|Xorg|Xwayland' 2>/dev/null || true); do
+      [[ -r "/proc/$p/environ" ]] || continue
+      env_display="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DISPLAY=//p' | head -n1)"
+      [[ -n "${env_display:-}" ]] || continue
+      SESSION_DISPLAY="$env_display"
+      break
+    done
+  fi
+
+  if [[ -z "${SESSION_DBUS:-}" ]]; then
+    for p in $(pgrep -u "$uid" -f 'dbus-daemon|dbus-broker|xfce4-session|xfconfd|xfce4-panel' 2>/dev/null || true); do
+      [[ -r "/proc/$p/environ" ]] || continue
+      env_bus="$(tr '\0' '\n' < "/proc/$p/environ" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n1)"
+      [[ -n "${env_bus:-}" ]] || continue
+      SESSION_DBUS="$env_bus"
+      break
+    done
+  fi
+
+  [[ -n "${SESSION_DISPLAY:-}" && -n "${SESSION_DBUS:-}" ]]
+}
+
+ensure_session_context() {
+  local out disp
+
+  if [[ -n "${SESSION_DISPLAY:-}" && -n "${SESSION_DBUS:-}" ]]; then
+    return 0
+  fi
+
+  log "Detecting existing graphical session context (DISPLAY + DBUS)..."
+  if find_session_context; then
+    log "Found existing session context: DISPLAY=$SESSION_DISPLAY"
+    return 0
+  fi
+
+  log "No session context found. Starting XRDP session and re-detecting context..."
+  out="$(run_as_user "$TARGET_USER" xrdp-sesrun 2>&1 || true)"
+  disp="$(echo "$out" | grep -Eo 'display=:[0-9]+' | head -n1 | cut -d= -f2)"
+  if [[ -n "${disp:-}" ]]; then
+    SESSION_DISPLAY="$disp"
+  fi
+
+  # Wait for XRDP session to fully initialize
+  log "Waiting for XRDP session to initialize (10 seconds)..."
+  sleep 10
+
+  if find_session_context; then
+    log "XRDP session context ready: DISPLAY=$SESSION_DISPLAY"
+    return 0
+  fi
+
+  log "Waiting for XRDP session context to become ready..."
+  for _ in {1..30}; do
+    sleep 1
+    if find_session_context; then
+      log "XRDP session context ready after wait: DISPLAY=$SESSION_DISPLAY"
+      return 0
+    fi
+  done
+
+  warn "Cannot determine graphical session context for $TARGET_USER. xrdp-sesrun output was:"
+  printf '  %s\n' "$out"
+  return 1
+}
+
+run_in_session_context() {
+  ensure_session_context || return 1
+  log "Using DISPLAY=$SESSION_DISPLAY DBUS_SESSION_BUS_ADDRESS=$SESSION_DBUS for xfconf/xfce4-panel operations"
+  run_as_user "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" "$@"
+}
+
 apt_run() {
     if [[ "$PROXY_CONFIGURED" == "true" ]]; then
         local proxy_vars="http_proxy=$http_proxy https_proxy=$https_proxy HTTP_PROXY=$HTTP_PROXY HTTPS_PROXY=$HTTPS_PROXY"
