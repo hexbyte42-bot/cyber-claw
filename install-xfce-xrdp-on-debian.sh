@@ -155,8 +155,13 @@ ensure_session_context() {
 
 run_in_session_context() {
   ensure_session_context || return 1
-  log "Using DISPLAY=$SESSION_DISPLAY DBUS_SESSION_BUS_ADDRESS=$SESSION_DBUS for xfconf/xfce4-panel operations"
-  run_as_user "$TARGET_USER" env DISPLAY="$SESSION_DISPLAY" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" "$@"
+  # Ensure DISPLAY has screen number (e.g., :10 -> :10.0)
+  local display_with_screen="$SESSION_DISPLAY"
+  if [[ ! "$SESSION_DISPLAY" =~ \.[0-9]+$ ]]; then
+    display_with_screen="${SESSION_DISPLAY}.0"
+  fi
+  log "Using DISPLAY=$display_with_screen DBUS_SESSION_BUS_ADDRESS=$SESSION_DBUS for xfconf/xfce4-panel operations"
+  run_as_user "$TARGET_USER" env DISPLAY="$display_with_screen" DBUS_SESSION_BUS_ADDRESS="$SESSION_DBUS" "$@"
 }
 
 apt_run() {
@@ -417,9 +422,11 @@ run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2
 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-2/plugins/plugin-2/expand -t bool -s false
 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1/button-icon -t string -s xfce4_xicon2
 run_in_session_context xfconf-query --create -c xfce4-panel -p /plugins/plugin-1/show-button-title -t bool -s false
-run_in_session_context xfce4-panel -r || true
 
-# 4) apply dock changes now
+# Restart panel (ignore errors if panel is not fully ready yet)
+run_in_session_context xfce4-panel -r || warn "xfce4-panel restart failed (may need manual restart after login)"
+
+# Start dock
 run_in_session_context plank >/dev/null 2>&1 &
 
 # -------------------------
