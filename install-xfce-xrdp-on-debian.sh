@@ -131,8 +131,8 @@ ensure_session_context() {
   fi
 
   # Wait for XRDP session to fully initialize
-  log "Waiting for XRDP session to initialize (10 seconds)..."
-  sleep 10
+  log "Waiting for XRDP session to initialize (15 seconds)..."
+  sleep 15
 
   if find_session_context; then
     log "XRDP session context ready: DISPLAY=$SESSION_DISPLAY"
@@ -300,7 +300,8 @@ apt_run install -y \
     xfce4 xfce4-goodies \
     xrdp xorgxrdp xclip xserver-xorg-input-libinput \
     pipewire-audio pipewire-module-xrdp \
-    fonts-noto fonts-noto-cjk fonts-noto-color-emoji
+    fonts-noto fonts-noto-cjk fonts-noto-color-emoji \
+    dbus-x11
 
 $SUDO systemctl enable --now xrdp
 $SUDO systemctl disable lightdm
