@@ -5,11 +5,20 @@ set -euo pipefail
 # Debian + XFCE + XRDP automated setup (before installing OpenClaw)
 # =========================
 
-# Proxy support
-export http_proxy="${http_proxy:-}"
-export https_proxy="${https_proxy:-}"
-export HTTP_PROXY="${HTTP_PROXY:-}"
-export HTTPS_PROXY="${HTTPS_PROXY:-}"
+# Proxy support - REQUIRED for all network access
+# These variables must be set before running this script
+if [[ -z "${http_proxy:-}" && -z "${https_proxy:-}" ]]; then
+    err "http_proxy or https_proxy environment variable must be set. This machine cannot access the internet directly."
+fi
+
+export http_proxy="${http_proxy}"
+export https_proxy="${https_proxy}"
+export HTTP_PROXY="${http_proxy}"
+export HTTPS_PROXY="${https_proxy}"
+
+# Export for sudo commands
+export SUDO_HTTP_PROXY="$HTTPS_PROXY"
+export SUDO_HTTPS_PROXY="$HTTPS_PROXY"
 
 log() { printf "\n\033[1;32m[+] %s\033[0m\n" "$*"; }
 warn() { printf "\n\033[1;33m[!] %s\033[0m\n" "$*"; }
@@ -119,6 +128,15 @@ if [[ $# -gt 0 ]]; then
       ;;
     -h|--help)
       echo "Usage: $0 [--quiet]"
+      echo ""
+      echo "Environment variables (REQUIRED):"
+      echo "  http_proxy   Proxy URL (e.g., http://proxy.example.com:8080)"
+      echo "  https_proxy  Proxy URL (e.g., http://proxy.example.com:8080)"
+      echo ""
+      echo "Example:"
+      echo "  export http_proxy=http://proxy.example.com:8080"
+      echo "  export https_proxy=http://proxy.example.com:8080"
+      echo "  sudo -E bash $0"
       exit 0
       ;;
     *)
@@ -136,7 +154,23 @@ SUDO="sudo"
 if [[ "$(id -u)" -eq 0 ]]; then
   SUDO=""
 else
-  command -v sudo >/dev/null 2>&1 || err "sudo is required when not running as root"
+  command -v sudo >/dev/null 2>&1 || err "sudo is required"
+fi
+
+# Preserve proxy environment for sudo commands
+if [[ "$(id -u)" -ne 0 ]]; then
+    # Check if proxy variables are preserved in sudo
+    if ! sudo env | grep -q "http_proxy"; then
+        log "Configuring sudo to preserve proxy environment..."
+        # Add env_keep for proxy variables if not already present
+        if ! grep -q "http_proxy" /etc/sudoers.d/proxy_env 2>/dev/null; then
+            cat > /etc/sudoers.d/proxy_env << 'EOF'
+Defaults env_keep += "http_proxy https_proxy HTTP_PROXY HTTPS_PROXY no_proxy NO_PROXY"
+EOF
+            chmod 440 /etc/sudoers.d/proxy_env
+            log "Sudo proxy environment configured"
+        fi
+    fi
 fi
 
 run_as_user() {
@@ -152,30 +186,36 @@ run_as_user() {
 log "Target user: $TARGET_USER"
 log "Target HOME: $TARGET_HOME"
 
-apt_run() {
-  local proxy_env=""
-  [[ -n "$http_proxy" ]] && proxy_env="$proxy_env http_proxy=$http_proxy"
-  [[ -n "$https_proxy" ]] && proxy_env="$proxy_env https_proxy=$https_proxy"
-  [[ -n "$HTTP_PROXY" ]] && proxy_env="$proxy_env HTTP_PROXY=$HTTP_PROXY"
-  [[ -n "$HTTPS_PROXY" ]] && proxy_env="$proxy_env HTTPS_PROXY=$HTTPS_PROXY"
-  
-  if [[ "$APT_QUIET" == "1" ]]; then
-    if [[ -n "$SUDO" ]]; then
-      $SUDO env $proxy_env DEBIAN_FRONTEND=noninteractive \
-        apt-get -q -y \
-          -o Dpkg::Use-Pty=0 \
-          -o Dpkg::Progress-Fancy=0 \
-          "$@"
+# Helper function to run commands with proxy environment for sudo
+run_with_proxy() {
+    local proxy_vars="http_proxy=$http_proxy https_proxy=$https_proxy HTTP_PROXY=$HTTP_PROXY HTTPS_PROXY=$HTTPS_PROXY"
+    if [[ "$(id -u)" -eq 0 ]]; then
+        eval $proxy_vars "$@"
     else
-      env $proxy_env DEBIAN_FRONTEND=noninteractive \
-        apt-get -q -y \
-          -o Dpkg::Use-Pty=0 \
-          -o Dpkg::Progress-Fancy=0 \
-          "$@"
+        sudo env $proxy_vars "$@"
     fi
-  else
-    $SUDO env $proxy_env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get "$@"
-  fi
+}
+
+apt_run() {
+    local proxy_vars="http_proxy=$http_proxy https_proxy=$https_proxy HTTP_PROXY=$HTTP_PROXY HTTPS_PROXY=$HTTPS_PROXY"
+    
+    if [[ "$APT_QUIET" == "1" ]]; then
+        if [[ -n "$SUDO" ]]; then
+            $SUDO env $proxy_vars DEBIAN_FRONTEND=noninteractive \
+                apt-get -q -y \
+                -o Dpkg::Use-Pty=0 \
+                -o Dpkg::Progress-Fancy=0 \
+                "$@"
+        else
+            env $proxy_vars DEBIAN_FRONTEND=noninteractive \
+                apt-get -q -y \
+                -o Dpkg::Use-Pty=0 \
+                -o Dpkg::Progress-Fancy=0 \
+                "$@"
+        fi
+    else
+        $SUDO env $proxy_vars DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get "$@"
+    fi
 }
 
 log "apt-get update"
@@ -257,20 +297,23 @@ log "Install WPS Office"
 WPS_DEB_URL="https://wdl1.pcfg.cache.wpscdn.com/wpsdl/wpsoffice/download/linux/11723/wps-office_11.1.0.11723.XA_amd64.deb"
 WPS_DEB="/tmp/wps-office.deb"
 
-if [[ -n "$http_proxy" || -n "$https_proxy" ]]; then
-  log "Downloading WPS with proxy..."
-  curl --proxy "$http_proxy" -fsSL "$WPS_DEB_URL" -o "$WPS_DEB" 2>/dev/null || \
-  curl -fsSL "$WPS_DEB_URL" -o "$WPS_DEB"
+# Download with proxy (try with proxy first, fallback to direct)
+log "Downloading WPS Office (with proxy: $http_proxy)..."
+if curl --proxy "$http_proxy" -fsSL "$WPS_DEB_URL" -o "$WPS_DEB" 2>/dev/null; then
+    log "Downloaded WPS Office via proxy"
+elif curl -fsSL "$WPS_DEB_URL" -o "$WPS_DEB" 2>/dev/null; then
+    log "Downloaded WPS Office (direct)"
 else
-  curl -fsSL "$WPS_DEB_URL" -o "$WPS_DEB"
+    err "Failed to download WPS Office. Check your proxy settings."
 fi
 
 if [[ -f "$WPS_DEB" ]]; then
-  $SUDO dpkg -i "$WPS_DEB" || $SUDO apt-get install -f -y
-  rm -f "$WPS_DEB"
-  log "WPS Office installed successfully"
+    # Install with proxy for potential dependency downloads
+    run_with_proxy dpkg -i "$WPS_DEB" || run_with_proxy apt-get install -f -y
+    rm -f "$WPS_DEB"
+    log "WPS Office installed successfully"
 else
-  warn "Failed to download WPS Office, skipping..."
+    err "WPS Office download failed"
 fi
 
 # Set Papirus as the default icon theme (XFCE)
@@ -282,9 +325,17 @@ run_in_session_context xfconf-query -c xsettings -p /Net/IconThemeName -s Papiru
 # -------------------------
 log "Install plank-reloaded"
 $SUDO mkdir -p /usr/share/keyrings
-curl -fsSL https://zquestz.github.io/ppa/debian/KEY.gpg \
-  | $SUDO gpg --dearmor -o /usr/share/keyrings/zquestz-archive-keyring.gpg
 
+# Download GPG key with proxy
+if curl --proxy "$http_proxy" -fsSL https://zquestz.github.io/ppa/debian/KEY.gpg -o /tmp/zquestz-key.gpg 2>/dev/null || \
+   curl -fsSL https://zquestz.github.io/ppa/debian/KEY.gpg -o /tmp/zquestz-key.gpg; then
+    $SUDO gpg --dearmor -o /usr/share/keyrings/zquestz-archive-keyring.gpg /tmp/zquestz-key.gpg
+    rm -f /tmp/zquestz-key.gpg
+else
+    err "Failed to download plank-reloaded GPG key"
+fi
+
+# Add repository
 echo "deb [signed-by=/usr/share/keyrings/zquestz-archive-keyring.gpg] https://zquestz.github.io/ppa/debian ./" \
   | $SUDO tee /etc/apt/sources.list.d/zquestz.list >/dev/null
 
