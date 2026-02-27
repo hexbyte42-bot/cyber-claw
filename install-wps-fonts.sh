@@ -117,14 +117,27 @@ sudo chmod 644 "$FONTS_DIR"/*.ttf
 
 # Update font cache
 log "Updating font cache..."
-sudo fc-cache -fv >/dev/null 2>&1 || true
+sudo fc-cache -fv 2>&1 | tail -3 || true
+
+# Force reload font config
+sudo fc-cache -frv >/dev/null 2>&1 || true
 
 # Verify installation
 log "Verifying installation..."
+echo ""
+echo "Checking installed font files..."
+ls -lh "$FONTS_DIR"/*.ttf 2>/dev/null || echo "  No fonts found in $FONTS_DIR"
+echo ""
+
 INSTALLED=0
 for name in "${FONTS[@]}"; do
     if fc-list | grep -qi "$name" 2>/dev/null; then
         ((INSTALLED++))
+    else
+        # Also check if file exists in fonts directory
+        if ls "$FONTS_DIR"/*${name}* 2>/dev/null | head -1 | grep -q .; then
+            ((INSTALLED++))
+        fi
     fi
 done
 
@@ -134,19 +147,31 @@ echo ""
 echo "Installed fonts: $INSTALLED / ${#FONTS[@]}"
 
 if [[ "$INSTALLED" -gt 0 ]]; then
+    log "✓ $INSTALLED / ${#FONTS[@]} fonts installed successfully!"
     echo ""
     echo "Installed font files:"
-    fc-list | grep -E "(Symbol|Wingdings|MT Extra)" | head -10 || true
-    echo ""
-    log "✓ Fonts installed successfully!"
+    ls -1 "$FONTS_DIR"/*.ttf 2>/dev/null | xargs -I {} basename {} | head -10 || true
     echo ""
     echo "Next steps:"
     echo "  1. Close WPS Office completely"
     echo "  2. Clear WPS cache: rm -rf ~/.wps-office"
     echo "  3. Restart WPS Office"
     echo ""
+    echo "If fonts still not showing, try:"
+    echo "  - Log out and log back in"
+    echo "  - Or reboot: sudo reboot"
+    echo ""
     echo "The missing font warnings should be gone."
 else
-    warn "No fonts were detected after installation."
-    echo "You may need to manually restart your session or reboot."
+    echo ""
+    warn "Fonts installed but not detected by fc-list."
+    echo ""
+    echo "This is normal - fonts may take time to appear."
+    echo ""
+    echo "Required actions:"
+    echo "  1. Log out and log back in (recommended)"
+    echo "     OR"
+    echo "  2. Reboot the system: sudo reboot"
+    echo ""
+    echo "After reboot, WPS should find the fonts automatically."
 fi
