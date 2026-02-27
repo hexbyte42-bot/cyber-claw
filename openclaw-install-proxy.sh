@@ -218,6 +218,11 @@ echo "✓ Configuring git proxy..."
 git config --global http.proxy "$http_proxy"
 git config --global https.proxy "$https_proxy"
 
+# Force git to use HTTPS instead of SSH (SSH doesn't work with HTTP proxy)
+echo "✓ Configuring git to use HTTPS instead of SSH..."
+git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+git config --global url."https://".insteadOf "git://"
+
 # Install OpenClaw
 echo ""
 echo "ℹ Installing OpenClaw globally via npm..."
