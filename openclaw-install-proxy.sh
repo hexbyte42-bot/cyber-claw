@@ -29,9 +29,10 @@ setup_proxy() {
         
         # Configure apt proxy
         echo "✓ Configuring apt proxy..."
-        sudo tee /etc/apt/apt.conf.d/proxy.conf << 'APTEOF' > /dev/null
-Acquire::http::Proxy "http://'"$http_proxy"'";
-Acquire::https::Proxy "http://'"$https_proxy"'";
+        sudo mkdir -p /etc/apt/apt.conf.d
+        sudo tee /etc/apt/apt.conf.d/proxy.conf > /dev/null << APTEOF
+Acquire::http::Proxy "$http_proxy";
+Acquire::https::Proxy "$https_proxy";
 APTEOF
         echo "✓ apt proxy configured"
         
