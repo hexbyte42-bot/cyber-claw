@@ -13,7 +13,16 @@ set -euo pipefail
 # - MT Extra
 
 USE_PROXY="${USE_PROXY:-false}"
-FONT_URL="https://raw.githubusercontent.com/ferion11/ttf-wps-fonts/main"
+FONT_URL="https://raw.githubusercontent.com/ferion11/ttf-wps-fonts/master"
+
+# Font files (actual names from repository)
+declare -A FONTS=(
+    ["symbol.ttf"]="Symbol"
+    ["wingding.ttf"]="Wingdings"
+    ["wingdng2.ttf"]="Wingdings 2"
+    ["wingdng3.ttf"]="Wingdings 3"
+    ["mtextra.ttf"]="MT Extra"
+)
 
 log() { printf "\n\033[1;32m[+] %s\033[0m\n" "$*"; }
 warn() { printf "\n\033[1;33m[!] %s\033[0m\n" "$*"; }
@@ -33,21 +42,12 @@ if [[ "$USE_PROXY" == "true" || "$USE_PROXY" == "1" ]]; then
 fi
 
 log "Installing WPS Office missing fonts..."
-log "Source: https://github.com/wachin/ttf-wps-fonts"
+log "Source: https://github.com/ferion11/ttf-wps-fonts"
 
 # Create temporary directory
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 cd "$TMPDIR"
-
-# Font files to download
-declare -A FONTS=(
-    ["symbold.ttf"]="Symbol"
-    ["wingding.ttf"]="Wingdings"
-    ["WINGDNG2.ttf"]="Wingdings 2"
-    ["WINGDNG3.ttf"]="Wingdings 3"
-    ["mtextra.ttf"]="MT Extra"
-)
 
 # Download function with proxy support
 download_font() {
@@ -74,7 +74,7 @@ download_font() {
 }
 
 # Download all fonts
-log "Downloading fonts from GitHub releases..."
+log "Downloading fonts..."
 for file in "${!FONTS[@]}"; do
     download_font "$file" "${FONTS[$file]}" || true
 done
