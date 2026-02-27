@@ -26,6 +26,26 @@ setup_proxy() {
         
         PROXY_CONFIGURED=true
         echo "✓ Proxy enabled: $http_proxy"
+        
+        # Configure apt proxy
+        echo "✓ Configuring apt proxy..."
+        sudo tee /etc/apt/apt.conf.d/proxy.conf << 'APTEOF' > /dev/null
+Acquire::http::Proxy "http://'"$http_proxy"'";
+Acquire::https::Proxy "http://'"$https_proxy"'";
+APTEOF
+        echo "✓ apt proxy configured"
+        
+        # Configure npm proxy
+        echo "✓ Configuring npm proxy..."
+        npm config set proxy "$http_proxy" 2>/dev/null || true
+        npm config set https-proxy "$https_proxy" 2>/dev/null || true
+        
+        # Configure git proxy (if git is available)
+        if command -v git &> /dev/null; then
+            echo "✓ Configuring git proxy..."
+            git config --global http.proxy "$http_proxy" 2>/dev/null || true
+            git config --global https.proxy "$https_proxy" 2>/dev/null || true
+        fi
     else
         echo "ℹ Proxy not enabled (set USE_PROXY=true to enable)"
     fi
