@@ -3,7 +3,7 @@ set -euo pipefail
 
 # WPS Office Missing Fonts Installer
 # Based on: https://aur.archlinux.org/packages/ttf-wps-fonts
-# Source: https://github.com/wachin/ttf-wps-fonts
+# Source: https://github.com/iamdh4/ttf-wps-fonts
 #
 # Installs symbol fonts required by WPS Office:
 # - Symbol
@@ -13,7 +13,7 @@ set -euo pipefail
 # - MT Extra
 
 USE_PROXY="${USE_PROXY:-false}"
-FONT_URL="https://github.com/wachin/ttf-wps-fonts/releases/download/1.0"
+FONT_URL="https://raw.githubusercontent.com/iamdh4/ttf-wps-fonts/master"
 
 log() { printf "\n\033[1;32m[+] %s\033[0m\n" "$*"; }
 warn() { printf "\n\033[1;33m[!] %s\033[0m\n" "$*"; }
