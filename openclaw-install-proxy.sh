@@ -29,7 +29,9 @@ setup_proxy() {
         
         # Clean up any invalid npm configs from previous runs
         sudo npm config delete git-proxy 2>/dev/null || true
+        sudo npm config delete git-config-path 2>/dev/null || true
         npm config delete git-proxy 2>/dev/null || true
+        npm config delete git-config-path 2>/dev/null || true
         
         # Configure apt proxy
         echo "✓ Configuring apt proxy..."
@@ -45,7 +47,6 @@ APTEOF
         sudo npm config set proxy "$http_proxy"
         sudo npm config set https-proxy "$https_proxy"
         sudo npm config set strict-ssl false
-        sudo npm config set git-config-path "/root/.gitconfig"
         
         # Also configure for current user (for consistency)
         npm config set proxy "$http_proxy" 2>/dev/null || true
