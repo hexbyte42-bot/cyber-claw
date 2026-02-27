@@ -228,10 +228,24 @@ echo ""
 echo "ℹ Installing OpenClaw globally via npm..."
 
 if [[ "$PROXY_CONFIGURED" == "true" ]]; then
+    # Configure npm proxy for root user (since we use sudo)
+    echo "✓ Configuring npm proxy for root user..."
     sudo npm config set proxy "$http_proxy"
     sudo npm config set https-proxy "$https_proxy"
-    sudo npm config set strict-ssl false  # Disable SSL verification for proxy
+    sudo npm config set strict-ssl false
+    sudo npm config set git-proxy "$http_proxy"
+    
+    # Also configure for current user (for consistency)
+    npm config set proxy "$http_proxy" 2>/dev/null || true
+    npm config set https-proxy "$https_proxy" 2>/dev/null || true
+    npm config set strict-ssl false 2>/dev/null || true
+    
     echo "✓ npm proxy configured"
+    
+    # Verify proxy configuration
+    echo "✓ Verifying npm proxy configuration..."
+    sudo npm config get proxy
+    sudo npm config get https-proxy
 fi
 
 # Use sudo for global npm install
@@ -245,5 +259,11 @@ if sudo npm install -g openclaw; then
 else
     echo ""
     echo "❌ Installation failed"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  1. Check npm proxy config: sudo npm config list"
+    echo "  2. Check git proxy config: git config --global --list"
+    echo "  3. Test proxy connectivity: curl -x $http_proxy -I https://www.google.com"
+    echo "  4. Try manual install: sudo npm install -g openclaw --proxy=$http_proxy"
     exit 1
 fi
