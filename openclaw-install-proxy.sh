@@ -194,6 +194,30 @@ else
     echo "✓ Node.js installed"
 fi
 
+# Check and install git if needed
+if ! command -v git &> /dev/null; then
+    echo "ℹ Git not found, installing..."
+    if [[ "$OS" == "linux" ]]; then
+        if command -v apt-get &> /dev/null; then
+            if [[ "$(id -u)" -eq 0 ]]; then
+                apt-get update -qq
+                apt-get install -y -qq git
+            else
+                sudo apt-get update -qq
+                sudo apt-get install -y -qq git
+            fi
+        fi
+    elif [[ "$OS" == "macos" ]]; then
+        brew install git
+    fi
+    echo "✓ Git installed"
+fi
+
+# Configure git proxy
+echo "✓ Configuring git proxy..."
+git config --global http.proxy "$http_proxy"
+git config --global https.proxy "$https_proxy"
+
 # Install OpenClaw
 echo ""
 echo "ℹ Installing OpenClaw globally via npm..."
@@ -201,6 +225,7 @@ echo "ℹ Installing OpenClaw globally via npm..."
 if [[ "$PROXY_CONFIGURED" == "true" ]]; then
     npm config set proxy "$http_proxy"
     npm config set https-proxy "$https_proxy"
+    npm config set strict-ssl false  # Disable SSL verification for proxy
     echo "✓ npm proxy configured"
 fi
 
