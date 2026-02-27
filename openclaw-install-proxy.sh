@@ -66,7 +66,7 @@ APTEOF
         
         # Configure git proxy
         echo "✓ Configuring git proxy..."
-        # Clean old config first
+        # Clean old config first (complete fresh start)
         sudo rm -f /root/.gitconfig
         rm -f ~/.gitconfig
         
@@ -288,25 +288,10 @@ if sudo npm install -g openclaw; then
     npm config delete strict-ssl 2>/dev/null || true
     echo "  ✓ Removed npm proxy config (user)"
     
-    # Clean git proxy but keep HTTPS URL replacements
-    sudo git config --global --unset http.proxy 2>/dev/null || true
-    sudo git config --global --unset https.proxy 2>/dev/null || true
-    git config --global --unset http.proxy 2>/dev/null || true
-    git config --global --unset https.proxy 2>/dev/null || true
-    echo "  ✓ Removed git proxy settings (kept HTTPS URL replacements)"
-    
-    # Clean git config files if empty
-    if sudo git config --global --list 2>/dev/null | grep -qE '^(http\.proxy|https\.proxy)='; then
-        : # Keep config if it has other settings
-    else
-        sudo rm -f /root/.gitconfig 2>/dev/null || true
-    fi
-    
-    if git config --global --list 2>/dev/null | grep -qE '^(http\.proxy|https\.proxy)='; then
-        : # Keep config if it has other settings
-    else
-        rm -f ~/.gitconfig 2>/dev/null || true
-    fi
+    # Clean git proxy (complete cleanup)
+    sudo rm -f /root/.gitconfig
+    rm -f ~/.gitconfig
+    echo "  ✓ Removed all git configurations"
     
     echo "✓ All proxy configurations cleaned up"
     
