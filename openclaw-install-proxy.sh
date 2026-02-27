@@ -29,9 +29,7 @@ setup_proxy() {
         
         # Clean up any invalid npm configs from previous runs
         sudo npm config delete git-proxy 2>/dev/null || true
-        sudo npm config delete git-config-path 2>/dev/null || true
         npm config delete git-proxy 2>/dev/null || true
-        npm config delete git-config-path 2>/dev/null || true
         
         # Configure apt proxy
         echo "✓ Configuring apt proxy..."
