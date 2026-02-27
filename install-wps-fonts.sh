@@ -11,6 +11,7 @@ set -uo pipefail
 # - Wingdings 2
 # - Wingdings 3
 # - MT Extra
+# - Webdings
 
 USE_PROXY="${USE_PROXY:-false}"
 FONT_URL="https://raw.githubusercontent.com/ferion11/ttf-wps-fonts/master"
@@ -22,6 +23,7 @@ declare -A FONTS=(
     ["wingdng2.ttf"]="Wingdings 2"
     ["wingdng3.ttf"]="Wingdings 3"
     ["mtextra.ttf"]="MT Extra"
+    ["webdings.ttf"]="Webdings"
 )
 
 log() { printf "\n\033[1;32m[+] %s\033[0m\n" "$*"; }
