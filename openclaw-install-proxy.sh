@@ -252,9 +252,40 @@ if sudo npm install -g openclaw; then
     echo ""
     echo "✅ OpenClaw installed successfully!"
     echo ""
+    
+    # Cleanup proxy configurations (no longer needed after installation)
+    if [[ "$PROXY_CONFIGURED" == "true" ]]; then
+        echo "ℹ Cleaning up proxy configurations..."
+        echo "  (Proxy settings are no longer needed for OpenClaw runtime)"
+        
+        # Clean apt proxy
+        sudo rm -f /etc/apt/apt.conf.d/proxy.conf
+        
+        # Clean npm proxy
+        sudo npm config delete proxy 2>/dev/null || true
+        sudo npm config delete https-proxy 2>/dev/null || true
+        sudo npm config delete strict-ssl 2>/dev/null || true
+        npm config delete proxy 2>/dev/null || true
+        npm config delete https-proxy 2>/dev/null || true
+        npm config delete strict-ssl 2>/dev/null || true
+        
+        # Clean git proxy (keep HTTPS URL replacement)
+        sudo git config --global --unset http.proxy 2>/dev/null || true
+        sudo git config --global --unset https.proxy 2>/dev/null || true
+        git config --global --unset http.proxy 2>/dev/null || true
+        git config --global --unset https.proxy 2>/dev/null || true
+        
+        echo "✓ Proxy configurations cleaned up"
+    fi
+    
+    echo ""
     echo "Next steps:"
     echo "  openclaw --help"
     echo ""
+    echo "Note: If you need to reinstall packages later, set proxy variables again:"
+    echo "  export USE_PROXY=true"
+    echo "  export http_proxy=http://your-proxy:8080"
+    echo "  export https_proxy=http://your-proxy:8080"
 else
     echo ""
     echo "❌ Installation failed"
