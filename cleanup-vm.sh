@@ -17,10 +17,14 @@
 #   - WPS Office 缓存
 #   - OpenClaw 配置
 #   - Journal 日志
+#   - SSH host keys (安全重置)
+#   - machine-id (避免克隆冲突)
+#   - cloud-init 数据 (确保下次启动重新初始化)
 #   - 磁盘空间归零 (便于压缩)
 # =============================================================================
 
-set -e
+# 不设置 set -e，每个命令自行处理错误
+# set -e  # Removed - we handle errors per-command
 
 RED='\033[0;31m'
 GREEN='\033[1;32m'
@@ -30,11 +34,25 @@ NC='\033[0m'
 
 log() { printf "${GREEN}[+]${NC} %s\n" "$*"; }
 warn() { printf "${YELLOW}[!]${NC} %s\n" "$*"; }
+err() { printf "${RED}[✗]${NC} %s\n" "$*" >&2; exit 1; }
 info() { printf "${BLUE}[i]${NC} %s\n" "$*"; }
+
+# =============================================================================
+# 前置检查
+# =============================================================================
+check_prerequisites() {
+    if [[ "$(id -u)" -ne 0 ]]; then
+        err "This script must run as root"
+    fi
+    log "Running as root - proceeding with cleanup"
+}
 
 info "=== VM Internal Cleanup Script ==="
 info "Starting cleanup at $(date)"
 echo ""
+
+# Run prerequisites
+check_prerequisites
 
 # =============================================================================
 # 1. APT 清理
@@ -77,7 +95,6 @@ done
 # 5. Shell 历史清理
 # =============================================================================
 log "Cleaning shell history..."
-history -c 2>/dev/null || true
 for user_home in /home/* /root; do
     rm -f "$user_home/.bash_history" || true
     rm -f "$user_home/.history" || true
@@ -115,7 +132,35 @@ rm -rf /var/log/journal/* 2>/dev/null || true
 info "  - Journal logs cleaned"
 
 # =============================================================================
-# 9. 其他系统缓存
+# 9. SSH Host Keys 清理 (安全重置)
+# =============================================================================
+log "Cleaning SSH host keys..."
+rm -f /etc/ssh/ssh_host_* || true
+info "  - SSH host keys removed (will regenerate on next boot)"
+
+# =============================================================================
+# 10. machine-id 重置 (避免克隆 VM 冲突)
+# =============================================================================
+log "Resetting machine-id..."
+if [[ -f /etc/machine-id ]]; then
+    truncate -s 0 /etc/machine-id || true
+    info "  - machine-id reset"
+else
+    warn "  - /etc/machine-id not found"
+fi
+
+# =============================================================================
+# 11. cloud-init 数据清理 (确保下次启动重新初始化)
+# =============================================================================
+log "Cleaning cloud-init data..."
+rm -rf /var/lib/cloud/instances/* || true
+rm -rf /var/lib/cloud/instance || true
+rm -f /var/lib/cloud/.instance-id || true
+rm -rf /var/log/cloud-init* || true
+info "  - cloud-init data cleaned"
+
+# =============================================================================
+# 12. 其他系统缓存
 # =============================================================================
 log "Cleaning other system caches..."
 rm -rf /var/cache/fontconfig/* 2>/dev/null || true
@@ -123,14 +168,14 @@ rm -rf /root/.cache 2>/dev/null || true
 info "  - System caches cleaned"
 
 # =============================================================================
-# 10. 磁盘空间归零 (便于压缩)
+# 13. 磁盘空间归零 (便于压缩)
 # =============================================================================
 log "Zeroing free space (this may take a while)..."
 info "  - Writing zeros to /zerofile..."
 dd if=/dev/zero of=/zerofile bs=1M status=none 2>/dev/null || true
 sync
 info "  - Removing zerofile..."
-rm -f /zerofile
+rm -f /zerofile || true  # Ensure cleanup even if dd partially failed
 info "  - Free space zeroed"
 
 # =============================================================================
