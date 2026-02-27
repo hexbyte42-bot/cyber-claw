@@ -215,13 +215,17 @@ fi
 
 # Configure git proxy
 echo "✓ Configuring git proxy..."
-git config --global http.proxy "$http_proxy"
-git config --global https.proxy "$https_proxy"
+# Configure for root user (since npm runs with sudo)
+sudo git config --global http.proxy "$http_proxy"
+sudo git config --global https.proxy "$https_proxy"
+sudo git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+sudo git config --global url."https://".insteadOf "git://"
 
-# Force git to use HTTPS instead of SSH (SSH doesn't work with HTTP proxy)
-echo "✓ Configuring git to use HTTPS instead of SSH..."
-git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
-git config --global url."https://".insteadOf "git://"
+# Also configure for current user (for consistency)
+git config --global http.proxy "$http_proxy" 2>/dev/null || true
+git config --global https.proxy "$https_proxy" 2>/dev/null || true
+git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" 2>/dev/null || true
+git config --global url."https://".insteadOf "git://" 2>/dev/null || true
 
 # Install OpenClaw
 echo ""
@@ -244,8 +248,13 @@ if [[ "$PROXY_CONFIGURED" == "true" ]]; then
     
     # Verify proxy configuration
     echo "✓ Verifying npm proxy configuration..."
-    sudo npm config get proxy
-    sudo npm config get https-proxy
+    echo "  npm proxy: $(sudo npm config get proxy)"
+    echo "  npm https-proxy: $(sudo npm config get https-proxy)"
+    echo "  npm git-proxy: $(sudo npm config get git-proxy)"
+    
+    # Show git configuration
+    echo "✓ Git proxy configuration:"
+    sudo git config --global --list | grep -E "(proxy|url\.)" || echo "  (checking...)"
 fi
 
 # Use sudo for global npm install
