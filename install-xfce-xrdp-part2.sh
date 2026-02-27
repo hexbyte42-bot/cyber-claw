@@ -133,6 +133,28 @@ run_in_session_context timeout 3 xfce4-panel -r || warn "Panel restart failed (w
 log "Starting plank dock..."
 run_in_session_context timeout 3 plank >/dev/null 2>&1 &
 
+# Configure plank to never hide (fix: dock disappears when window maximized)
+log "Configuring plank dock settings..."
+PLANK_CONFIG_DIR="$TARGET_HOME/.config/plank/dock1"
+run_as_user "$TARGET_USER" mkdir -p "$PLANK_CONFIG_DIR"
+cat > "$PLANK_CONFIG_DIR/settings" <<'EOF'
+[plank]
+current-theme=default
+icon-size=48
+zoom-enabled=true
+zoom-percent=1.25
+hide-mode=0
+pressure-reveal-enabled=false
+hide-delay=0
+unhide-delay=0
+reveal-pressure=10
+monitor=0
+alignment=center
+items=['firefox.desktop', 'thunar.desktop', 'xfce4-terminal.desktop', 'xfce4-settings-manager.desktop']
+EOF
+$SUDO chown -R "$TARGET_USER:$TARGET_USER" "$PLANK_CONFIG_DIR"
+log "Plank configured: hide-mode=0 (never hide)"
+
 # OpenClaw Gateway Configuration
 log "Configure openclaw-gateway systemd user override"
 
