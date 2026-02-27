@@ -34,6 +34,8 @@ setup_proxy() {
         # Configure apt proxy
         echo "✓ Configuring apt proxy..."
         sudo mkdir -p /etc/apt/apt.conf.d
+        # Clean old config first
+        sudo rm -f /etc/apt/apt.conf.d/proxy.conf
         sudo tee /etc/apt/apt.conf.d/proxy.conf > /dev/null << APTEOF
 Acquire::http::Proxy "$http_proxy";
 Acquire::https::Proxy "$https_proxy";
@@ -42,11 +44,20 @@ APTEOF
         
         # Configure npm proxy for root user (since we use sudo)
         echo "✓ Configuring npm proxy for root user..."
+        # Clean old config first
+        sudo npm config delete proxy 2>/dev/null || true
+        sudo npm config delete https-proxy 2>/dev/null || true
+        sudo npm config delete strict-ssl 2>/dev/null || true
+        
         sudo npm config set proxy "$http_proxy"
         sudo npm config set https-proxy "$https_proxy"
         sudo npm config set strict-ssl false
         
         # Also configure for current user (for consistency)
+        npm config delete proxy 2>/dev/null || true
+        npm config delete https-proxy 2>/dev/null || true
+        npm config delete strict-ssl 2>/dev/null || true
+        
         npm config set proxy "$http_proxy" 2>/dev/null || true
         npm config set https-proxy "$https_proxy" 2>/dev/null || true
         npm config set strict-ssl false 2>/dev/null || true
@@ -55,6 +66,10 @@ APTEOF
         
         # Configure git proxy
         echo "✓ Configuring git proxy..."
+        # Clean old config first
+        sudo rm -f /root/.gitconfig
+        rm -f ~/.gitconfig
+        
         # Configure for root user (since npm runs with sudo)
         sudo git config --global http.proxy "$http_proxy"
         sudo git config --global https.proxy "$https_proxy"
@@ -253,30 +268,47 @@ if sudo npm install -g openclaw; then
     echo "✅ OpenClaw installed successfully!"
     echo ""
     
-    # Cleanup proxy configurations (no longer needed after installation)
-    if [[ "$PROXY_CONFIGURED" == "true" ]]; then
-        echo "ℹ Cleaning up proxy configurations..."
-        echo "  (Proxy settings are no longer needed for OpenClaw runtime)"
-        
-        # Clean apt proxy
-        sudo rm -f /etc/apt/apt.conf.d/proxy.conf
-        
-        # Clean npm proxy
-        sudo npm config delete proxy 2>/dev/null || true
-        sudo npm config delete https-proxy 2>/dev/null || true
-        sudo npm config delete strict-ssl 2>/dev/null || true
-        npm config delete proxy 2>/dev/null || true
-        npm config delete https-proxy 2>/dev/null || true
-        npm config delete strict-ssl 2>/dev/null || true
-        
-        # Clean git proxy (keep HTTPS URL replacement)
-        sudo git config --global --unset http.proxy 2>/dev/null || true
-        sudo git config --global --unset https.proxy 2>/dev/null || true
-        git config --global --unset http.proxy 2>/dev/null || true
-        git config --global --unset https.proxy 2>/dev/null || true
-        
-        echo "✓ Proxy configurations cleaned up"
+    # Cleanup ALL proxy configurations
+    echo "ℹ Cleaning up ALL proxy configurations..."
+    echo "  (Proxy settings are only needed during installation)"
+    
+    # Clean apt proxy
+    sudo rm -f /etc/apt/apt.conf.d/proxy.conf
+    echo "  ✓ Removed apt proxy config"
+    
+    # Clean npm proxy (root)
+    sudo npm config delete proxy 2>/dev/null || true
+    sudo npm config delete https-proxy 2>/dev/null || true
+    sudo npm config delete strict-ssl 2>/dev/null || true
+    echo "  ✓ Removed npm proxy config (root)"
+    
+    # Clean npm proxy (user)
+    npm config delete proxy 2>/dev/null || true
+    npm config delete https-proxy 2>/dev/null || true
+    npm config delete strict-ssl 2>/dev/null || true
+    echo "  ✓ Removed npm proxy config (user)"
+    
+    # Clean git proxy but keep HTTPS URL replacements
+    sudo git config --global --unset http.proxy 2>/dev/null || true
+    sudo git config --global --unset https.proxy 2>/dev/null || true
+    git config --global --unset http.proxy 2>/dev/null || true
+    git config --global --unset https.proxy 2>/dev/null || true
+    echo "  ✓ Removed git proxy settings (kept HTTPS URL replacements)"
+    
+    # Clean git config files if empty
+    if sudo git config --global --list 2>/dev/null | grep -qE '^(http\.proxy|https\.proxy)='; then
+        : # Keep config if it has other settings
+    else
+        sudo rm -f /root/.gitconfig 2>/dev/null || true
     fi
+    
+    if git config --global --list 2>/dev/null | grep -qE '^(http\.proxy|https\.proxy)='; then
+        : # Keep config if it has other settings
+    else
+        rm -f ~/.gitconfig 2>/dev/null || true
+    fi
+    
+    echo "✓ All proxy configurations cleaned up"
     
     echo ""
     echo "Next steps:"
