@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # WPS Office Missing Fonts Installer
 # Based on: https://aur.archlinux.org/packages/ttf-wps-fonts
@@ -25,8 +25,8 @@ declare -A FONTS=(
 )
 
 log() { printf "\n\033[1;32m[+] %s\033[0m\n" "$*"; }
-warn() { printf "\n\033[1;33m[!] %s\033[0m\n" "$*"; }
-err() { printf "\n\033[1;31m[✗] %s\033[0m\n" "$*"; exit 1; }
+warn() { printf "\033[1;33m[!] %s\033[0m\n" "$*"; }
+err() { printf "\033[1;31m[✗] %s\033[0m\n" "$*"; exit 1; }
 info() { printf "\033[1;34m[i]\033[0m %s\n" "$*"; }
 
 # Setup proxy if needed
@@ -57,14 +57,16 @@ download_font() {
     
     info "Downloading ${name}..."
     
+    local curl_opts="-fsSL --retry 3 --retry-delay 2 --connect-timeout 10"
+    
     if [[ -n "$http_proxy" ]]; then
-        if curl --proxy "$http_proxy" -fsSL "$url" -o "$file" 2>/dev/null; then
-            log "✓ ${name} downloaded"
-            return 0
-        fi
-    else
-        if curl -fsSL "$url" -o "$file" 2>/dev/null; then
-            log "✓ ${name} downloaded"
+        curl_opts="$curl_opts --proxy $http_proxy"
+    fi
+    
+    if eval curl $curl_opts "$url" -o "$file" 2>/dev/null; then
+        if [[ -f "$file" && -s "$file" ]]; then
+            local size=$(ls -lh "$file" | awk '{print $5}')
+            log "✓ ${name} downloaded (${size})"
             return 0
         fi
     fi
@@ -75,17 +77,24 @@ download_font() {
 
 # Download all fonts
 log "Downloading fonts..."
+SUCCESS=0
+FAILED=0
+
 for file in "${!FONTS[@]}"; do
-    download_font "$file" "${FONTS[$file]}" || true
+    if download_font "$file" "${FONTS[$file]}"; then
+        ((SUCCESS++))
+    else
+        ((FAILED++))
+    fi
 done
 
+log "Download complete: $SUCCESS successful, $FAILED failed"
+
 # Verify we have at least some fonts
-FONT_COUNT=$(ls -1 *.ttf 2>/dev/null | wc -l)
+FONT_COUNT=$(ls -1 *.ttf 2>/dev/null | wc -l || echo "0")
 if [[ "$FONT_COUNT" -eq 0 ]]; then
     err "Failed to download any fonts. Check your network/proxy settings."
 fi
-
-log "Downloaded $FONT_COUNT font(s)"
 
 # Install fonts
 log "Installing fonts to system..."
@@ -108,25 +117,27 @@ sudo chmod 644 "$FONTS_DIR"/*.ttf
 
 # Update font cache
 log "Updating font cache..."
-sudo fc-cache -fv >/dev/null 2>&1
+sudo fc-cache -fv >/dev/null 2>&1 || true
 
 # Verify installation
 log "Verifying installation..."
 INSTALLED=0
 for name in "${FONTS[@]}"; do
-    if fc-list | grep -qi "$name"; then
-        ((INSTALLED++)) || true
+    if fc-list | grep -qi "$name" 2>/dev/null; then
+        ((INSTALLED++))
     fi
 done
 
 echo ""
 log "Installation complete!"
 echo ""
-echo "Installed fonts: $INSTALLED"
-fc-list | grep -E "(Symbol|Wingdings|MT Extra)" | head -10 || true
-echo ""
+echo "Installed fonts: $INSTALLED / ${#FONTS[@]}"
 
 if [[ "$INSTALLED" -gt 0 ]]; then
+    echo ""
+    echo "Installed font files:"
+    fc-list | grep -E "(Symbol|Wingdings|MT Extra)" | head -10 || true
+    echo ""
     log "✓ Fonts installed successfully!"
     echo ""
     echo "Next steps:"
