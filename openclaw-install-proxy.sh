@@ -223,13 +223,14 @@ echo ""
 echo "ℹ Installing OpenClaw globally via npm..."
 
 if [[ "$PROXY_CONFIGURED" == "true" ]]; then
-    npm config set proxy "$http_proxy"
-    npm config set https-proxy "$https_proxy"
-    npm config set strict-ssl false  # Disable SSL verification for proxy
+    sudo npm config set proxy "$http_proxy"
+    sudo npm config set https-proxy "$https_proxy"
+    sudo npm config set strict-ssl false  # Disable SSL verification for proxy
     echo "✓ npm proxy configured"
 fi
 
-if npm install -g openclaw; then
+# Use sudo for global npm install
+if sudo npm install -g openclaw; then
     echo ""
     echo "✅ OpenClaw installed successfully!"
     echo ""
