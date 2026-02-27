@@ -237,7 +237,7 @@ if [[ "$PROXY_CONFIGURED" == "true" ]]; then
     sudo npm config set proxy "$http_proxy"
     sudo npm config set https-proxy "$https_proxy"
     sudo npm config set strict-ssl false
-    sudo npm config set git-proxy "$http_proxy"
+    sudo npm config set git-config-path "/root/.gitconfig"  # Ensure git uses root's config
     
     # Also configure for current user (for consistency)
     npm config set proxy "$http_proxy" 2>/dev/null || true
@@ -250,7 +250,7 @@ if [[ "$PROXY_CONFIGURED" == "true" ]]; then
     echo "✓ Verifying npm proxy configuration..."
     echo "  npm proxy: $(sudo npm config get proxy)"
     echo "  npm https-proxy: $(sudo npm config get https-proxy)"
-    echo "  npm git-proxy: $(sudo npm config get git-proxy)"
+    echo "  npm strict-ssl: $(sudo npm config get strict-ssl)"
     
     # Show git configuration
     echo "✓ Git proxy configuration:"
