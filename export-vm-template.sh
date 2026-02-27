@@ -48,74 +48,22 @@ fi
 
 log "Starting VM cleanup..."
 
-# Create cleanup script to run inside VM
-CLEANUP_SCRIPT=$(mktemp)
-cat > "$CLEANUP_SCRIPT" << 'VMCLEAN'
-#!/bin/bash
-set -e
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLEANUP_SCRIPT="$SCRIPT_DIR/cleanup-vm.sh"
 
-echo "[VM] Cleaning apt cache..."
-apt-get clean || true
-apt-get autoremove -y || true
-rm -rf /var/cache/apt/archives/*.deb || true
+# Check if cleanup script exists
+if [[ ! -f "$CLEANUP_SCRIPT" ]]; then
+    err "Cleanup script not found: $CLEANUP_SCRIPT"
+fi
 
-echo "[VM] Cleaning temporary files..."
-rm -rf /tmp/* || true
-rm -rf /var/tmp/* || true
-
-echo "[VM] Cleaning logs..."
-find /var/log -type f -exec truncate -s 0 {} \; || true
-rm -f /var/log/*.gz || true
-rm -f /var/log/*.[0-9] || true
-
-echo "[VM] Cleaning user caches..."
-for user_home in /home/* /root; do
-    if [[ -d "$user_home/.cache" ]]; then
-        rm -rf "$user_home/.cache"/* || true
-    fi
-done
-
-echo "[VM] Cleaning shell history..."
-history -c 2>/dev/null || true
-for user_home in /home/* /root; do
-    rm -f "$user_home/.bash_history" || true
-    rm -f "$user_home/.history" || true
-    rm -f "$user_home/.sh_history" || true
-done
-
-echo "[VM] Cleaning WPS cache..."
-for user_home in /home/*; do
-    rm -rf "$user_home/.wps-office" || true
-done
-
-echo "[VM] Cleaning OpenClaw..."
-for user_home in /home/* /root; do
-    rm -rf "$user_home/.openclaw" || true
-done
-
-echo "[VM] Cleaning journal logs..."
-journalctl --rotate || true
-journalctl --vacuum-time=1s || true
-rm -rf /var/log/journal/* || true
-
-echo "[VM] Zeroing free space..."
-dd if=/dev/zero of=/zerofile bs=1M status=none || true
-sync
-rm -f /zerofile
-
-echo "[VM] Cleanup complete"
-VMCLEAN
-
-# Copy script to VM and execute
+# Copy cleanup script to VM and execute
 log "Uploading cleanup script to VM..."
-cat "$CLEANUP_SCRIPT" | qm guest exec "$VMID" -- bash -s
+qm guest exec "$VMID" -- /bin/bash -s < "$CLEANUP_SCRIPT"
 
 # Wait for cleanup to complete
 log "Waiting for cleanup to complete (this may take a while)..."
 sleep 5
-
-# Cleanup temp file
-rm -f "$CLEANUP_SCRIPT"
 
 # Shutdown VM
 log "Shutting down VM..."
